@@ -1,4 +1,4 @@
-# Kia — Portfolio Site
+[# Kia — Portfolio Site
 
 Static portfolio that indexes all projects with **market-value estimates, live previews, and an in-site source-code viewer**. Built for an international audience (English UI), deployed on GitHub Pages.
 
@@ -58,3 +58,4 @@ Because all links are relative, the site also works from any subpath or custom d
 - Source viewer caps each project at ~1.2 MB / 200 files (root files first, per-file 60 KB truncation). Full code stays on GitHub — every project page links to the repo and a ZIP download.
 - Projects marked `preview: none` are server-side (bots/backends); their pages explain that and link to GitHub.
 - `preview: build` projects need `npm run build:previews` first; until then the page shows "preview is being prepared".
+](https://github.com/KiaAgentX/portfolio)
