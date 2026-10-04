@@ -209,10 +209,7 @@ const CRITICAL_CSS = `<style id="critical">
 .nav-cta{padding:7px 16px;border-radius:var(--r-sm);font-size:12.5px;font-weight:600;letter-spacing:.5px;background:linear-gradient(123deg,#7f1d1d,#ef4435 48%,#f59e0b);color:#fff!important}
 .burger{display:none}
 .hero{padding:72px 0 30px;position:relative;overflow:hidden}
-.hero-video-wrap{position:absolute;inset:0;overflow:hidden;z-index:0}
-.hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:70% center;opacity:0;pointer-events:none;transition:opacity .6s}
-.hero-video.ready{opacity:.5}
-.hero::after{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;background:linear-gradient(100deg,rgba(6,6,14,.95) 26%,rgba(6,6,14,.35) 66%,rgba(6,6,14,.7))}
+.hero::after{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;background:radial-gradient(700px 300px at 25% 20%,rgba(167,139,250,.10),transparent 70%)}
 .hero-bg{position:absolute;inset:0;pointer-events:none;background:radial-gradient(700px 300px at 25% 20%,rgba(167,139,250,.12),transparent 70%),radial-gradient(600px 260px at 78% 10%,rgba(34,211,238,.10),transparent 70%)}
 .hero-grid{position:absolute;inset:0;pointer-events:none;opacity:.5;background-image:linear-gradient(rgba(148,163,184,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.05) 1px,transparent 1px);background-size:46px 46px;mask-image:radial-gradient(ellipse 80% 60% at 50% 30%,#000 30%,transparent 75%)}
 .hero-inner{position:relative;z-index:1}
@@ -397,7 +394,7 @@ ${CRITICAL_CSS}
 ${hudHtml('.')}
 ${navHtml('.', true)}
 <main>
-  <section class="hero"><div class="hero-video-wrap" aria-hidden="true"><video id="hero-video" class="hero-video" src="assets/hero.mp4" muted playsinline preload="metadata"></video></div><div class="hero-bg"></div><div class="hero-grid"></div><div class="container hero-inner">
+  <section class="hero"><div class="hero-bg"></div><div class="hero-grid"></div><div class="container hero-inner">
     <div class="eyebrow">KIA Â· SOFTWARE PORTFOLIO Â· ${stats.projects} PROJECTS</div>
     <h1 aria-label="Engineering production software across AI, fintech and 3D.">
       <span class="w"><span style="--wi:0">Engineering</span></span>
@@ -700,7 +697,7 @@ mkdirp(path.join(DIST, 'assets'));
 mkdirp(path.join(DIST, 'data', 'src'));
 mkdirp(path.join(DIST, 'projects'));
 
-for (const f of ['style.css', 'index.js', 'project.js', 'cosmos.js', 'motion.js', 'nav.js', 'gsap.min.js', 'ScrollTrigger.min.js', 'lenis.min.js', 'highlight.min.js', 'highlight.min.css', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'hero.mp4']) {
+for (const f of ['style.css', 'index.js', 'project.js', 'cosmos.js', 'motion.js', 'nav.js', 'gsap.min.js', 'ScrollTrigger.min.js', 'lenis.min.js', 'highlight.min.js', 'highlight.min.css', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png']) {
   fs.copyFileSync(path.join(SRC, 'assets', f), path.join(DIST, 'assets', f));
 }
 /* service worker MUST live at site root so its scope covers every page */

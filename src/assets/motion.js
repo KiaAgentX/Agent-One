@@ -1,4 +1,4 @@
-/* motion.js — cinematic scroll (GSAP + ScrollTrigger + Lenis) & mouse interactions.
+/* motion.js â€” cinematic scroll (GSAP + ScrollTrigger + Lenis) & mouse interactions.
    Everything is guarded: reduced-motion and missing libs fall back to CSS behavior. */
 (function () {
   "use strict";
@@ -62,7 +62,7 @@
 
     if (reduce) return; /* class added so tests see the layer; no movement for a11y */
 
-    /* phase 1 — hero (above the fold) */
+    /* phase 1 â€” hero (above the fold) */
     phase(function () {
     /* ---- cinematic hero exit (scrub) ---- */
     if (document.querySelector(".hero-inner")) {
@@ -96,7 +96,7 @@
     });
     });
 
-    /* phase 2 — content blocks */
+    /* phase 2 â€” content blocks */
     phase(function () {
     /* ---- card entrances (batched stagger) ---- */
     ["#grid .card", "#docs-grid .card", ".skill-card", ".rm-card", ".cap-card", ".c-card"].forEach(function (sel) {
@@ -135,7 +135,7 @@
     });
     });
 
-    /* phase 3 — data visualisations */
+    /* phase 3 â€” data visualisations */
     phase(function () {
     /* ---- capability / language bars grow on enter (scaleX = composited, no reflow) ---- */
     gsap.utils.toArray(".cap-bar i, .lb-fill").forEach(function (bar) {
@@ -164,16 +164,8 @@
     }
     });
 
-    /* phase 4 — deep-scroll effects */
+    /* phase 4 â€” deep-scroll effects */
     phase(function () {
-    /* ---- hero video fades out as you leave the hero ---- */
-    if (document.getElementById("hero-video")) {
-      gsap.to("#hero-video", {
-        opacity: 0, ease: "none",
-        scrollTrigger: { trigger: ".hero", start: "top top", end: "65% top", scrub: true }
-      });
-    }
-
     /* ---- showreel marquee: rows drift opposite with scroll ---- */
     if (document.getElementById("mq-row1")) {
       gsap.fromTo("#mq-row1", { x: -520 }, {
@@ -322,55 +314,11 @@
     });
   }
 
-  /* ================= hero video: mouse-X scrub (Mainframe-style) ================= */
-  function bindVideoScrub() {
-    var v = document.getElementById("hero-video");
-    if (!v || reduce) return;
-    var SENSITIVITY = 0.8;
-    var prevX = null;
-    var targetTime = 0;
-    var seeking = false;
-
-    function queueSeek(t) {
-      if (!v.duration || !isFinite(v.duration)) return;
-      targetTime = Math.max(0, Math.min(v.duration, t));
-      if (!seeking) {
-        seeking = true;
-        try { v.currentTime = targetTime; } catch (e) { seeking = false; }
-      }
-    }
-    v.addEventListener("seeked", function () {
-      v.classList.add("ready");
-      seeking = false;
-      if (Math.abs(v.currentTime - targetTime) > 0.03) {
-        seeking = true;
-        try { v.currentTime = targetTime; } catch (e) { seeking = false; }
-      }
-    });
-    v.addEventListener("loadeddata", function () { v.classList.add("ready"); });
-    v.addEventListener("loadedmetadata", function () {
-      targetTime = v.currentTime || 0;
-      /* start paused at a dramatic frame */
-      try { v.currentTime = Math.min(1.2, (v.duration || 2) * 0.15); } catch (e) { }
-    });
-    v.addEventListener("error", function () { v.style.display = "none"; });
-
-    window.addEventListener("pointermove", function (e) {
-      if (prevX === null) { prevX = e.clientX; return; }
-      var delta = e.clientX - prevX;
-      prevX = e.clientX;
-      if (!v.duration || !isFinite(v.duration)) return;
-      queueSeek(targetTime + (delta / window.innerWidth) * SENSITIVITY * v.duration);
-    }, { passive: true });
-  }
-
   /* ================= bind interactions ================= */
   function bindAll() {
     if (!fine || reduce) return;
 
     createCursor();
-
-    bindVideoScrub();
 
     document.querySelectorAll(".nav-cta, .hero-cta .btn, .skills-cta .btn, .foot-cta .btn, .learn, .btn.primary").forEach(function (el) {
       bindMagnetic(el, 0.28);

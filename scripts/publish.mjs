@@ -119,6 +119,18 @@ for (let i = 0; i < chunks.length; i++) {
   if (!ok) { failed++; console.log(`CHUNK ${i + 1} FAILED — re-run this script to resume`); break; }
 }
 
+/* prune: delete tracked files that no longer exist in dist (e.g. removed hero.mp4) */
+const treeR0 = sh('git', ['-c', 'core.quotePath=false', '-C', path.join(PORT, '.publish'), 'ls-tree', '-r', '--name-only', 'HEAD'], PORT);
+const tracked = (treeR0.stdout || '').split('\n').map(s => s.trim()).filter(Boolean);
+const distSet = new Set(files.map(f => f.rel));
+const obsolete = tracked.filter(t => !distSet.has(t));
+if (obsolete.length) {
+  console.log(`pruning ${obsolete.length} obsolete file(s): ${obsolete.slice(0, 3).join(', ')}${obsolete.length > 3 ? '…' : ''}`);
+  obsolete.forEach(t => sh('git', ['-C', path.join(PORT, '.publish'), 'rm', '-q', '--', t], PORT, true));
+  const pr = sh('git', ['-C', path.join(PORT, '.publish'), 'commit', '-q', '-m', 'prune: remove files no longer in dist'], PORT, true);
+  if (pr.status === 0) pushWithRetry();
+}
+
 /* final verification — path-based (CRLF-insensitive) against the publish clone */
 const treeR = sh('git', ['-c', 'core.quotePath=false', '-C', path.join(PORT, '.publish'), 'ls-tree', '-r', '--name-only', 'HEAD'], PORT);
 const treePaths = new Set((treeR.stdout || '').split('\n').map(s => s.trim()).filter(Boolean));
