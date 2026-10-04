@@ -325,14 +325,14 @@
 
   renderChips();
   render();
-  renderRoadmap();
-  renderFlagships();
-  renderCapabilities();
-  renderLangs();
-  renderSkills();
-  /* heavy DOM (showreel) off the critical path */
-  if (window.requestIdleCallback) requestIdleCallback(() => renderShowreel(), { timeout: 1500 });
-  else setTimeout(renderShowreel, 120);
+  /* heavy DOM work off the critical path (mobile TBT) */
+  function idle(fn, t) {
+    if (window.requestIdleCallback) requestIdleCallback(fn, { timeout: t || 1500 });
+    else setTimeout(fn, t ? Math.min(t, 300) : 60);
+  }
+  idle(() => { renderRoadmap(); renderFlagships(); });
+  idle(() => { renderCapabilities(); renderLangs(); });
+  idle(() => { renderSkills(); renderShowreel(); });
   startTypewriter();
   revealPills();
   bindCopyTelegram();
@@ -368,10 +368,10 @@
     c.style.setProperty("--my", (((e.clientY - r.top) / r.height) * 100).toFixed(1) + "%");
   });
 
-  /* ---- reveal on scroll (only when GSAP motion layer is absent) ---- */
+  /* ---- reveal on scroll (only when the GSAP layer will NOT run) ---- */
   try {
-    if (!window.gsap && "IntersectionObserver" in window && !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
-      const els = Array.from(document.querySelectorAll(".sec-head, .capabilities, .contact, .universe-grid, .skills-cta, .docs-section, .roadmap-section, .spec, .foot-cta"));
+    if (!window.__HAS_MOTION && "IntersectionObserver" in window && !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
+      const els = Array.from(document.querySelectorAll(".sec-head, .capabilities, .contact, .universe-grid, .skills-cta, .docs-section, .roadmap-section, .foot-cta"));
       els.forEach(el => el.classList.add("reveal"));
       const io = new IntersectionObserver(entries => {
         entries.forEach(x => { if (x.isIntersecting) { x.target.classList.add("in"); io.unobserve(x.target); } });

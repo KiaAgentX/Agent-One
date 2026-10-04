@@ -191,8 +191,56 @@ function hudHtml(base) {
 
 const FONTS = `<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;700&family=Vazirmatn:wght@400;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;700&family=Vazirmatn:wght@400;700&display=swap"></noscript>`;
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap"></noscript>`;
+
+/* Above-the-fold critical CSS inlined in <head> so first paint never waits on style.css */
+const CRITICAL_CSS = `<style id="critical">
+:root{--bg:#06060e;--bg2:#0a0a16;--panel:#0c0c18;--panel2:#12122a;--border:#1c2033;--border2:#2a3050;--text:#f0ebdf;--muted:#9d9aa8;--faint:#8b8ea3;--accent:#ef4435;--gold:#fbbf24;--cyan:#22d3ee;--green:#34d399;--purple:#a78bfa;--r:6px;--r-sm:4px;--mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;--sans:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--disp:"Space Grotesk","Inter",system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}
+.container{max-width:1240px;margin:0 auto;padding:0 24px}.mono{font-family:var(--mono)}h1,h2,h3{font-family:var(--disp)}
+.nav{position:sticky;top:0;z-index:85;background:rgba(6,6,14,.85);backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:62px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-family:var(--mono);letter-spacing:2px;font-size:14px;text-transform:uppercase}
+.brand .dot{width:9px;height:9px;border-radius:2px;background:var(--accent);box-shadow:0 0 10px rgba(239,68,53,.8);animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.45}}
+.nav-links{display:flex;gap:20px;align-items:center;font-size:13px;color:var(--muted);font-family:var(--mono)}
+.nav-links a:hover{color:var(--text)}
+.nav-cta{padding:7px 16px;border-radius:var(--r-sm);font-size:12.5px;font-weight:600;letter-spacing:.5px;background:linear-gradient(123deg,#7f1d1d,#ef4435 48%,#f59e0b);color:#fff!important}
+.burger{display:none}
+.hero{padding:72px 0 30px;position:relative;overflow:hidden}
+.hero-video-wrap{position:absolute;inset:0;overflow:hidden;z-index:0}
+.hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:70% center;opacity:0;pointer-events:none;transition:opacity .6s}
+.hero-video.ready{opacity:.5}
+.hero::after{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;background:linear-gradient(100deg,rgba(6,6,14,.95) 26%,rgba(6,6,14,.35) 66%,rgba(6,6,14,.7))}
+.hero-bg{position:absolute;inset:0;pointer-events:none;background:radial-gradient(700px 300px at 25% 20%,rgba(167,139,250,.12),transparent 70%),radial-gradient(600px 260px at 78% 10%,rgba(34,211,238,.10),transparent 70%)}
+.hero-grid{position:absolute;inset:0;pointer-events:none;opacity:.5;background-image:linear-gradient(rgba(148,163,184,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.05) 1px,transparent 1px);background-size:46px 46px;mask-image:radial-gradient(ellipse 80% 60% at 50% 30%,#000 30%,transparent 75%)}
+.hero-inner{position:relative;z-index:1}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:4px;text-transform:uppercase;color:var(--faint);margin-bottom:18px;display:flex;gap:14px;align-items:center}
+.eyebrow::before{content:"";width:36px;height:1px;background:var(--accent)}
+.hero h1{font-size:clamp(38px,6.4vw,88px);line-height:1.05;margin:0 0 16px;letter-spacing:-2.2px;font-weight:700}
+.hero h1 .w{display:inline-block;overflow:hidden;vertical-align:bottom}
+.hero h1 .w>span{display:inline-block;animation:wordUp .7s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--wi,0)*60ms)}
+@keyframes wordUp{from{transform:translateY(110%);opacity:0}to{transform:none;opacity:1}}
+.hero h1 .grad{background:linear-gradient(100deg,var(--cyan) 0%,var(--purple) 55%,var(--pink,#f472b6) 95%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.blurb-intro{pointer-events:none;user-select:none;margin:0 0 18px;font-size:clamp(17px,3.4vw,24px);line-height:1.3;color:var(--text);filter:blur(7px);opacity:.85;transition:filter 1.1s ease,opacity 1.1s ease}
+.blurb-intro.sharp{filter:blur(.4px);opacity:1}
+.typewriter{font-size:clamp(18px,3.6vw,26px);line-height:1.35;color:var(--text);margin:0 0 22px;min-height:1.5em;max-width:660px}
+.tw-cur{display:inline-block;width:2px;height:1.05em;background:var(--accent);vertical-align:-.15em;margin-left:3px;animation:blink 1s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+#hero-pills{display:flex;flex-wrap:wrap;align-items:center;margin-bottom:30px;opacity:0;transform:translateY(12px);transition:opacity .45s ease,transform .45s ease}
+#hero-pills.in{opacity:1;transform:none}
+.pill{display:inline-flex;align-items:center;gap:8px;background:#fff;color:#0c0c0c;border:1px solid rgba(0,0,0,.14);border-radius:999px;font-size:14px;font-weight:600;padding:7px 18px;margin:0 8px 10px 0;cursor:pointer;transition:background .2s,color .2s;white-space:nowrap}
+.pill:hover{background:#0c0c0c;color:#fff}
+.pill.outline{background:transparent;color:#fff;border-color:rgba(255,255,255,.8)}
+.spec{display:flex;flex-wrap:wrap;border:1px solid var(--border);border-radius:var(--r);background:rgba(12,12,24,.72);overflow:hidden;margin-top:8px}
+.spec .cell{flex:1 1 150px;padding:15px 20px;border-right:1px dashed var(--border);font-family:var(--mono)}
+.spec .v{font-size:23px;font-weight:700;letter-spacing:-.5px;display:block;font-variant-numeric:tabular-nums;min-width:9ch}
+.spec .v.gold{color:var(--gold)}.spec .v.green{color:var(--green)}.spec .v.cyan{color:var(--cyan)}
+.spec .k{font-size:10.5px;color:var(--faint);text-transform:uppercase;letter-spacing:1.5px}
+#cosmos{position:fixed;inset:0;z-index:-1;width:100vw;height:100vh;pointer-events:none;background:var(--bg)}
+#hud{position:fixed;right:16px;bottom:16px;z-index:60;display:flex;flex-direction:column;align-items:center;gap:8px}
+</style>`;
 
 const TICKER_WORDS = ['Python', 'React', 'Three.js', 'PyTorch', 'Next.js', 'FastAPI', 'PostgreSQL', 'Docker', 'TypeScript', 'Vite', 'WebGPU', 'Telegram Bots', 'RL Agents', 'Qdrant', 'Solana', 'MetaTrader 5', 'Redis', 'Tailwind', 'aiogram', 'LLM Routing'];
 function tickerHtml() {
@@ -335,18 +383,21 @@ function buildIndex(stats, cards, langs, caps, capMax) {
 <meta property="og:type" content="website">
 ${FONTS}
 <noscript><style>.blurb-intro{filter:none!important;opacity:1!important}#tw-cur{display:none!important}#hero-pills{opacity:1!important;transform:none!important}</style></noscript>
+${CRITICAL_CSS}
+<script>window.__HAS_MOTION = true;</script>
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="manifest" href="assets/manifest.webmanifest">
 <meta name="theme-color" content="#06060e">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="preload" as="style" href="assets/style.css" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="assets/style.css"></noscript>
 </head>
 <body>
 <script>window.matchMedia=window.matchMedia||function(q){return{matches:false,media:q,addListener:function(){},removeListener:function(){},addEventListener:function(){},removeEventListener:function(){},dispatchEvent:function(){return false;}};};</script>
 ${hudHtml('.')}
 ${navHtml('.', true)}
 <main>
-  <section class="hero"><div class="hero-video-wrap" aria-hidden="true"><video id="hero-video" class="hero-video" src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260530_042513_df96a13b-6155-4f6e-8b93-c9dee66fba08.mp4" muted playsinline preload="metadata"></video></div><div class="hero-bg"></div><div class="hero-grid"></div><div class="container hero-inner">
+  <section class="hero"><div class="hero-video-wrap" aria-hidden="true"><video id="hero-video" class="hero-video" src="assets/hero.mp4" muted playsinline preload="metadata"></video></div><div class="hero-bg"></div><div class="hero-grid"></div><div class="container hero-inner">
     <div class="eyebrow">KIA Â· SOFTWARE PORTFOLIO Â· ${stats.projects} PROJECTS</div>
     <h1 aria-label="Engineering production software across AI, fintech and 3D.">
       <span class="w"><span style="--wi:0">Engineering</span></span>
@@ -498,13 +549,13 @@ ${navHtml('.', true)}
 <script>window.__LANGS__ = ${safeJson(langs)};</script>
 <script>window.__CAPS__ = ${safeJson(caps)};</script>
 <script>window.__CAPMAX__ = ${capMax};</script>
-<script src="assets/cosmos.js"></script>
+<script src="assets/cosmos.js" defer></script>
 <script src="assets/index.js"></script>
-<script src="assets/nav.js"></script>
-<script src="assets/gsap.min.js"></script>
-<script src="assets/ScrollTrigger.min.js"></script>
-<script src="assets/lenis.min.js"></script>
-<script src="assets/motion.js"></script>
+<script src="assets/nav.js" defer></script>
+<script src="assets/gsap.min.js" defer></script>
+<script src="assets/ScrollTrigger.min.js" defer></script>
+<script src="assets/lenis.min.js" defer></script>
+<script src="assets/motion.js" defer></script>
 </body>
 </html>`;
 }
@@ -649,7 +700,7 @@ mkdirp(path.join(DIST, 'assets'));
 mkdirp(path.join(DIST, 'data', 'src'));
 mkdirp(path.join(DIST, 'projects'));
 
-for (const f of ['style.css', 'index.js', 'project.js', 'cosmos.js', 'motion.js', 'nav.js', 'gsap.min.js', 'ScrollTrigger.min.js', 'lenis.min.js', 'highlight.min.js', 'highlight.min.css', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png']) {
+for (const f of ['style.css', 'index.js', 'project.js', 'cosmos.js', 'motion.js', 'nav.js', 'gsap.min.js', 'ScrollTrigger.min.js', 'lenis.min.js', 'highlight.min.js', 'highlight.min.css', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'hero.mp4']) {
   fs.copyFileSync(path.join(SRC, 'assets', f), path.join(DIST, 'assets', f));
 }
 /* service worker MUST live at site root so its scope covers every page */

@@ -51,12 +51,19 @@
     });
   }
 
+  function phase(fn, t) {
+    if (window.requestIdleCallback) requestIdleCallback(fn, { timeout: t || 1000 });
+    else setTimeout(fn, 30);
+  }
+
   function scene() {
     gsap.registerPlugin(ST);
     html.classList.add("motion-on");
 
     if (reduce) return; /* class added so tests see the layer; no movement for a11y */
 
+    /* phase 1 — hero (above the fold) */
+    phase(function () {
     /* ---- cinematic hero exit (scrub) ---- */
     if (document.querySelector(".hero-inner")) {
       gsap.to(".hero-inner", {
@@ -87,7 +94,10 @@
         });
       }
     });
+    });
 
+    /* phase 2 — content blocks */
+    phase(function () {
     /* ---- card entrances (batched stagger) ---- */
     ["#grid .card", "#docs-grid .card", ".skill-card", ".rm-card", ".cap-card", ".c-card"].forEach(function (sel) {
       var els = gsap.utils.toArray(sel);
@@ -123,7 +133,10 @@
         });
       }
     });
+    });
 
+    /* phase 3 — data visualisations */
+    phase(function () {
     /* ---- capability / language bars grow on enter (scaleX = composited, no reflow) ---- */
     gsap.utils.toArray(".cap-bar i, .lb-fill").forEach(function (bar) {
       gsap.fromTo(bar, { scaleX: 0 }, {
@@ -149,7 +162,10 @@
         scrollTrigger: { trigger: ".phead", start: "top 88%" }
       });
     }
+    });
 
+    /* phase 4 — deep-scroll effects */
+    phase(function () {
     /* ---- hero video fades out as you leave the hero ---- */
     if (document.getElementById("hero-video")) {
       gsap.to("#hero-video", {
@@ -209,6 +225,7 @@
     /* refresh after assets/fonts settle */
     window.addEventListener("load", function () { ST.refresh(); });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { ST.refresh(); });
+    });
   }
 
   try {
@@ -323,12 +340,14 @@
       }
     }
     v.addEventListener("seeked", function () {
+      v.classList.add("ready");
       seeking = false;
       if (Math.abs(v.currentTime - targetTime) > 0.03) {
         seeking = true;
         try { v.currentTime = targetTime; } catch (e) { seeking = false; }
       }
     });
+    v.addEventListener("loadeddata", function () { v.classList.add("ready"); });
     v.addEventListener("loadedmetadata", function () {
       targetTime = v.currentTime || 0;
       /* start paused at a dramatic frame */

@@ -912,3 +912,6 @@ html.menu-open { overflow: hidden; }
 /* B9: showreel DOM weight — contain painting + intrinsic sizing for lazy tiles */
 .showreel { contain: layout paint; }
 .mq-tile { content-visibility: auto; contain-intrinsic-size: 260px 167px; }
+
+/* CLS guard: counter slots never change width while animating */
+.spec .v, .fact .fv { font-variant-numeric: tabular-nums; min-width: 9ch; }

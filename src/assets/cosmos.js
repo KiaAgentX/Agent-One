@@ -231,7 +231,7 @@
     H = canvas.clientHeight = window.innerHeight;
     canvas.width = W * dpr; canvas.height = H * dpr;
     ctx && ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    var n = Math.min(260, Math.floor((W * H) / 5200));
+    var n = Math.min(W < 600 ? 110 : 260, Math.floor((W * H) / (W < 600 ? 8000 : 5200)));
     stars = [];
     for (var i = 0; i < n; i++) {
       stars.push({
@@ -454,6 +454,8 @@
       btn0.dataset.bound = "1";
       btn0.addEventListener("click", function () { SFX.toggle(); });
     }
-    start();
+    /* start the starfield off the critical path */
+    if (window.requestIdleCallback) requestIdleCallback(start, { timeout: 1200 });
+    else setTimeout(start, 80);
   }
 })();
