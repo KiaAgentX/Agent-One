@@ -1,57 +1,58 @@
 {
-    "name": "kia-portfolio",
-    "version": "1.0.0",
-    "private": true,
-    "type": "module",
-    "description": "Static portfolio site: index of 48 projects with live previews and in-site source viewer.",
-    "scripts": {
-        "vendor": "node scripts/vendor-hljs.mjs",
-        "scan": "node scripts/scan.mjs .. ./scan.json",
-        "build": "node scripts/build.mjs",
-        "build:previews": "node scripts/build-previews.mjs",
-        "build:all": "npm run build:previews && npm run build",
-        "serve": "python -m http.server 8877 --directory dist",
-        "test": "node scripts/test-site.mjs",
-        "deploy": "gh-pages -d dist",
-        "desktop": "electron-builder --win portable"
+  "name": "kia-portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Static portfolio site: index of 48 projects with live previews and in-site source viewer.",
+  "scripts": {
+    "vendor": "node scripts/vendor-hljs.mjs",
+    "scan": "node scripts/scan.mjs .. ./scan.json",
+    "build": "node scripts/build.mjs",
+    "build:previews": "node scripts/build-previews.mjs",
+    "build:all": "npm run build:previews && npm run build",
+    "serve": "python -m http.server 8877 --directory dist",
+    "test": "node scripts/test-site.mjs",
+    "deploy": "gh-pages -d dist",
+    "desktop": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "gh-pages": "^6.3.0",
+    "highlight.js": "^11.11.1",
+    "jsdom": "^30.1.1",
+    "sharp": "^0.35.5"
+  },
+  "dependencies": {
+    "gsap": "^3.15.0",
+    "lenis": "^1.3.26"
+  },
+  "main": "desktop/main.cjs",
+  "build": {
+    "appId": "com.kiaagentx.portfolio",
+    "productName": "Kia Portfolio",
+    "artifactName": "Kia-Portfolio-${version}-win-${arch}.${ext}",
+    "asar": false,
+    "npmRebuild": false,
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
     },
-    "devDependencies": {
-        "electron": "^44.5.1",
-        "electron-builder": "^26.15.3",
-        "esbuild": "^0.28.2",
-        "gh-pages": "^6.3.0",
-        "highlight.js": "^11.11.1",
-        "jsdom": "^30.1.1",
-        "sharp": "^0.35.5"
+    "files": [
+      "desktop/**/*",
+      "dist/**/*",
+      "package.json"
+    ],
+    "win": {
+      "icon": "src/assets/icon-512.png",
+      "target": [
+        "portable"
+      ]
     },
-    "dependencies": {
-        "gsap": "^3.15.0",
-        "lenis": "^1.3.26"
+    "portable": {
+      "artifactName": "Kia-Portfolio-${version}-win-${arch}.${ext}"
     },
-    "main": "desktop/main.cjs",
-    "build": {
-        "appId": "com.kiaagentx.portfolio",
-        "productName": "Kia Portfolio",
-        "artifactName": "Kia-Portfolio-${version}-win-${arch}.${ext}",
-        "asar": false,
-        "npmRebuild": false,
-        "directories": {
-            "output": "release",
-            "buildResources": "build"
-        },
-        "files": [
-            "desktop/**/*",
-            "dist/**/*",
-            "package.json"
-        ],
-        "win": {
-            "icon": "src/assets/icon-512.png",
-            "target": [
-                "portable"
-            ]
-        },
-        "portable": {
-            "artifactName": "Kia-Portfolio-${version}-win-${arch}.${ext}"
-        }
-    }
+    "compression": "maximum"
+  }
 }
