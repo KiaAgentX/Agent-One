@@ -15,7 +15,8 @@
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "build": "turbo run build",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "audit:manifest": "node scripts/manifest.mjs"
   },
   "devDependencies": {
     "turbo": "^2.5.0",
