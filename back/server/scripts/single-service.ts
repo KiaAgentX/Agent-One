@@ -7,10 +7,17 @@
  *   BOT_MODE=webhook  BOT_WEBHOOK_URL=https://<app>.up.railway.app/api/v1/bot/webhook
  *   TELEGRAM_WEBHOOK_SECRET=<random>   (optional but recommended)
  *
+ *   On Railway this is AUTOMATIC: a public domain (RAILWAY_PUBLIC_DOMAIN)
+ *   switches the bot to webhook mode at boot — Telegram pushes updates, there
+ *   is no getUpdates long-poll to collide over, so deploy overlaps can never
+ *   409-crash the bot again. Local dev (no domain) keeps long-polling; an
+ *   explicit BOT_MODE always wins (BOT_MODE=polling opts out).
+ *
  * Run: pnpm -F @dropagentx/server exec tsx scripts/single-service.ts
  */
 
 import { execSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../src/config.js';
 import { buildApp } from '../src/index.js';
@@ -23,6 +30,24 @@ import { buildApp } from '../src/index.js';
 if (process.env.DATABASE_URL === undefined || process.env.DATABASE_URL.trim() === '') {
   process.env.DATABASE_URL = 'file:/app/db/v3.db';
   console.log('[single] DATABASE_URL unset — defaulting to file:/app/db/v3.db');
+}
+// Zero-config webhook: a Railway public domain means the bot defaults to
+// WEBHOOK mode — no getUpdates long-poll exists, so the deploy-overlap 409
+// (two instances racing for updates during a redeploy) cannot happen at all.
+// A boot-ephemeral secret is armed on BOTH sides (setWebhook + handler
+// verification read the same var below); regenerated per boot, so in-flight
+// updates signed with the previous secret are dropped only for the seconds
+// between container start and setWebhook. Single-replica by design — a multi-
+// replica deploy must set a shared TELEGRAM_WEBHOOK_SECRET explicitly.
+const botMode = process.env.BOT_MODE?.trim();
+const publicDomain = process.env.RAILWAY_PUBLIC_DOMAIN?.trim();
+if ((botMode === undefined || botMode === '') && publicDomain !== undefined && publicDomain !== '') {
+  process.env.BOT_MODE = 'webhook';
+  process.env.BOT_WEBHOOK_URL = `https://${publicDomain}/api/v1/bot/webhook`;
+  if (process.env.TELEGRAM_WEBHOOK_SECRET === undefined || process.env.TELEGRAM_WEBHOOK_SECRET.trim() === '') {
+    process.env.TELEGRAM_WEBHOOK_SECRET = randomBytes(32).toString('hex');
+  }
+  console.log(`[single] public domain present — bot defaults to WEBHOOK mode → ${process.env.BOT_WEBHOOK_URL}`);
 }
 // Zero-config Mini App: derive the Mini-App base (served at /app by this same
 // process) so the bot's web_app buttons ("اپ تلگرام") arm without a fourth

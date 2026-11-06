@@ -8,7 +8,7 @@
 
 `front/` → public site, Telegram Mini App, Aurora dashboard · `back/` → server, bot and every domain package
 
-[![Version](https://img.shields.io/badge/version-4.4.1-818CF8?labelColor=0F1B2D)](package.json)
+[![Version](https://img.shields.io/badge/version-4.4.2-818CF8?labelColor=0F1B2D)](package.json)
 [![Tests](https://img.shields.io/badge/tests-286%20passing-6EE7B7?labelColor=0F1B2D)](#testing)
 [![TypeScript strict](https://img.shields.io/badge/TypeScript-strict%20%2B%20noUncheckedIndexedAccess-3178C6?labelColor=0F1B2D)](tsconfig.base.json)
 [![Node](https://img.shields.io/badge/node-%E2%89%A522-339933?labelColor=0F1B2D&logo=node.js&logoColor=white)](package.json)
@@ -91,7 +91,7 @@ Real UI, real data — the stack booted with a seeded demo database (all 8 escro
 ## Project layout
 
 ```
-DropAgentX v3 (v4.4.1)
+DropAgentX v3 (v4.4.2)
 ├── front/                    # everything the user touches
 │   ├── dashboard/            # Aurora UI — React 19 + Vite + Tailwind v4, fa/en (owner console)
 │   ├── webapp/               # Telegram Mini App — 30 pages, mobile-first, RTL-native
@@ -182,7 +182,11 @@ and the entrypoint re-defaults it before the fail-closed config gate — attach 
 at `/app/db`, set `TELEGRAM_BOT_TOKEN`, and the service boots. Railway injects `PORT`
 and the healthcheck (`/api/v1/health`) is already wired in `railway.json`.
 
-The bot runs **long-polling by default**; to switch Telegram to webhook mode, set:
+The bot **long-polls in local dev**; on Railway (a public domain exists) it
+**auto-arms webhook mode at boot** — Telegram pushes updates, there is no
+`getUpdates` long-poll left to collide over, so a deploy overlap can never
+409-crash the bot again, and a boot-ephemeral secret is armed on both sides.
+To force a mode explicitly, set:
 
 ```ini
 BOT_MODE=webhook
@@ -300,7 +304,7 @@ the **real typed client** through it — contracts are exercised end-to-end, not
 | 4 | Aurora dashboard — fa/en, RTL, typed client | ✅ |
 | 5 | AI gateway — 6 agents, 16 skills, caps, fallback | ✅ |
 | 6 | Legacy migration (Σ 187,672 Đ proven) + Railway release | ✅ |
-| 7 | Unification — 8 repos → one monorepo, Mini App + public site + nation charter, v4.4.1 on Agent-One | ✅ |
+| 7 | Unification — 8 repos → one monorepo, Mini App + public site + nation charter, v4.4.2 on Agent-One | ✅ |
 
 Details and acceptance criteria per phase: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 The unification lawbook: [`docs/RULEBOOK.md`](docs/RULEBOOK.md).

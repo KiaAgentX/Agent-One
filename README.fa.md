@@ -9,7 +9,7 @@
 
 `front/` → سایت عمومی، مینی‌اپ تلگرام، داشبورد Aurora · `back/` → سرور، ربات و همه‌ی بسته‌های دامنه
 
-[![Version](https://img.shields.io/badge/version-4.4.1-818CF8?labelColor=0F1B2D)](package.json)
+[![Version](https://img.shields.io/badge/version-4.4.2-818CF8?labelColor=0F1B2D)](package.json)
 [![Tests](https://img.shields.io/badge/tests-286%20passing-6EE7B7?labelColor=0F1B2D)](#تست‌ها)
 [![TypeScript strict](https://img.shields.io/badge/TypeScript-strict%20%2B%20noUncheckedIndexedAccess-3178C6?labelColor=0F1B2D)](tsconfig.base.json)
 [![Node](https://img.shields.io/badge/node-%E2%89%A522-339933?labelColor=0F1B2D&logo=node.js&logoColor=white)](package.json)
@@ -92,7 +92,7 @@ UI واقعی با دیتای واقعی — کل استک با دیتابیس �
 ## ساختار پروژه
 
 ```
-DropAgentX v3 (v4.4.1)
+DropAgentX v3 (v4.4.2)
 ├── front/                    # هرچه کاربر لمس می‌کند
 │   ├── dashboard/            # Aurora UI — React 19 + Vite + Tailwind v4، fa/en (کنسول مالک)
 │   ├── webapp/               # مینی‌اپ تلگرام — ۳۰ صفحه، موبایل‌اول، RTL بومی
@@ -182,7 +182,10 @@ docker run --rm -p 8787:8787 --env-file .env dropagentx-v3
 `/app/db` وصل کنید و `TELEGRAM_BOT_TOKEN` را بدهید؛ Railway خودش `PORT` را تزریق می‌کند
 و healthcheck (`/api/v1/health`) در `railway.json` از قبل سیم‌کشی شده است.
 
-بات به‌صورت پیش‌فرض **long-polling** است؛ برای سوئیچ تلگرام به وبهوک:
+بات در توسعه‌ی محلی **long-polling** است؛ روی Railway (وقتی دامنه‌ی عمومی وجود دارد)
+موقع بوت **خودکار وبهوک را مسلح می‌کند** — تلگرام آپدیت‌ها را push می‌کند، دیگر
+`getUpdates`ای برای تصادم نمی‌ماند و overlap دیپلوی هرگز نمی‌تواند بات را با 409
+بیندازد؛ یک secret گذرای بوت هم دوطرفه مسلح می‌شود. برای تحمیل حالت به‌صورت دستی:
 
 ```ini
 BOT_MODE=webhook
@@ -299,7 +302,7 @@ pnpm -F @dropagentx/server exec tsx scripts/genesis-proof.ts --db file:./db/v3.d
 | ۴ | داشبورد Aurora — fa/en، RTL، کلاینت تایپ‌دار | ✅ |
 | ۵ | گیت‌وی AI — ۶ ایجنت، ۱۶ مهارت، سقف، fallback | ✅ |
 | ۶ | مهاجرت لجسی (Σ ۱۸۷٬۶۷۲ Đ اثبات‌شده) + انتشار Railway | ✅ |
-| ۷ | یکپارچه‌سازی — ۸ ریپو → یک monorepo، مینی‌اپ + سایت عمومی + منشور ملی، v4.4.1 روی Agent-One | ✅ |
+| ۷ | یکپارچه‌سازی — ۸ ریپو → یک monorepo، مینی‌اپ + سایت عمومی + منشور ملی، v4.4.2 روی Agent-One | ✅ |
 
 جزئیات و معیارهای پذیرش هر فاز: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 قانون‌نامه‌ی یکپارچه‌سازی: [`docs/RULEBOOK.md`](docs/RULEBOOK.md).

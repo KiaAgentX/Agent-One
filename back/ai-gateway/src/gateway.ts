@@ -157,7 +157,7 @@ export class AiGateway {
     // 1) budget gate — BEFORE any provider call.
     const allowance = this.deps.meter.checkAllowance(input.userId);
     if (!allowance.ok) {
-      this.audit({
+      await this.audit({
         ...baseAudit,
         agent: input.directAgent ?? 'orchestrator',
         provider: null,
@@ -231,7 +231,7 @@ export class AiGateway {
       const callMessages: ChatMessage[] = isLastRound ? [...messages, { role: 'user', content: forceFinalInstruction() }] : messages;
       const result = await this.deps.chain.chat({ messages: callMessages, temperature: 0.4, maxTokens: 1200 });
       if (!result.ok) {
-        this.audit({
+        await this.audit({
           ...baseAudit,
           agent,
           provider: null,
@@ -269,7 +269,7 @@ export class AiGateway {
       if (envelope.kind === 'reply') {
         const reply = redact(envelope.text);
         const redactions = redactionCount(envelope.text);
-        this.audit({
+        await this.audit({
           ...baseAudit,
           agent,
           provider: result.provider,
@@ -299,7 +299,7 @@ export class AiGateway {
       if (envelope.kind === 'malformed') {
         malformedStrikes += 1;
         if (malformedStrikes >= 2 || isLastRound) {
-          this.audit({
+          await this.audit({
             ...baseAudit,
             agent,
             provider: result.provider,
@@ -332,7 +332,7 @@ export class AiGateway {
       //      die on the exhausted-loop path with no audited answer. Refuse
       //      loudly instead (audited, typed failure), never execute blind.
       if (isLastRound) {
-        this.audit({
+        await this.audit({
           ...baseAudit,
           agent,
           provider: result.provider,
@@ -379,13 +379,17 @@ export class AiGateway {
     return { ok: false, code: 'AI_INTERNAL', message: 'Gateway loop exhausted without an answer.' };
   }
 
-  private audit(event: Omit<AiAuditEvent, 'at'> & { readonly at: string }): void {
-    // Fire-and-forget, but NEVER an unhandled rejection: one transient audit-
-    // sink error used to kill the whole process (Node exits on unhandled
-    // rejections) — a logging failure became a full outage. Log loudly instead.
-    // (Promise.resolve also normalizes sinks that return plain void.)
-    Promise.resolve(this.deps.audit.record(event)).catch((err: unknown) => {
+  /** Audit writes are part of the ANSWER, not a side effect: the response
+   *  waits for the sink (one local insert) — an answer that outlives its own
+   *  audit trail violates the auditable-answer law and races every reader
+   *  (tests included). A sink FAILURE still only logs: one transient audit-
+   *  sink error used to kill the whole process (Node exits on unhandled
+   *  rejections) — a logging failure must never fail a user request. */
+  private async audit(event: Omit<AiAuditEvent, 'at'> & { readonly at: string }): Promise<void> {
+    try {
+      await this.deps.audit.record(event);
+    } catch (err: unknown) {
       console.error(`[ai-gateway] audit sink failed (${event.outcome}/${event.code ?? 'ok'}): ${err instanceof Error ? err.message : String(err)}`);
-    });
+    }
   }
 }

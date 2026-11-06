@@ -16,6 +16,9 @@ vars together, or none).
    KIA_ADMIN_KEY=<openssl rand -hex 24>
    TELEGRAM_BOT_TOKEN=<from @BotFather>
    TELEGRAM_ADMIN_CHAT_ID=<your numeric chat id>
+   # ↓ optional on Railway — the boot auto-arms WEBHOOK mode from
+   #   RAILWAY_PUBLIC_DOMAIN (with a boot-ephemeral secret) and derives
+   #   WEBAPP_BASE_URL. Set BOT_MODE=polling to opt out.
    BOT_MODE=webhook
    BOT_WEBHOOK_URL=https://<app>.up.railway.app/api/v1/bot/webhook
    TELEGRAM_WEBHOOK_SECRET=<openssl rand -hex 24>
