@@ -15,6 +15,15 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../src/config.js';
 import { buildApp } from '../src/index.js';
 
+// Zero-config boot: Railway does not reliably surface image-level ENV to the
+// process, and a fresh service ships no variables at all — so the entrypoint
+// itself defaults the database to the canonical volume path BEFORE the
+// fail-closed config gate runs. An explicitly set DATABASE_URL always wins;
+// empty-string vars count as unset (dotenv-style files leave empties behind).
+if (process.env.DATABASE_URL === undefined || process.env.DATABASE_URL.trim() === '') {
+  process.env.DATABASE_URL = 'file:/app/db/v3.db';
+  console.log('[single] DATABASE_URL unset — defaulting to file:/app/db/v3.db');
+}
 const config = loadConfig();
 
 // Launch gate: a fresh Railway volume is an EMPTY SQLite file — ensure the
