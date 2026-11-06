@@ -6,17 +6,16 @@
 
 **One engine for the whole empire — wallet ledger, escrow marketplace, AI cycle and parliament, rebuilt domain-first from day zero.**
 
-`front/` → Aurora dashboard · `back/` → server, bot and every domain package
+`front/` → public site, Telegram Mini App, Aurora dashboard · `back/` → server, bot and every domain package
 
-[![Version](https://img.shields.io/badge/version-1.0.0-818CF8?labelColor=0F1B2D)](package.json)
-[![CI](https://github.com/KiaAgentX/DropAgentX-v3/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-187%20passing-6EE7B7?labelColor=0F1B2D)](#testing)
+[![Version](https://img.shields.io/badge/version-4.3.0-818CF8?labelColor=0F1B2D)](package.json)
+[![Tests](https://img.shields.io/badge/tests-273%20passing-6EE7B7?labelColor=0F1B2D)](#testing)
 [![TypeScript strict](https://img.shields.io/badge/TypeScript-strict%20%2B%20noUncheckedIndexedAccess-3178C6?labelColor=0F1B2D)](tsconfig.base.json)
 [![Node](https://img.shields.io/badge/node-%E2%89%A522-339933?labelColor=0F1B2D&logo=node.js&logoColor=white)](package.json)
 [![pnpm + turbo](https://img.shields.io/badge/pnpm%209%20%2B%20turbo-monorepo-F9A03C?labelColor=0F1B2D&logo=pnpm&logoColor=white)](pnpm-workspace.yaml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-38BDF8?labelColor=0F1B2D)](LICENSE)
 
-**[English](README.md)** · **[فارسی](README.fa.md)** · [Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Deploy](docs/DEPLOY.md) · [Product Thesis](docs/PRODUCT-THESIS.md) · [ADRs](docs/adr/)
+**[English](README.md)** · **[فارسی](README.fa.md)** · [Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Deploy](docs/DEPLOY.md) · [Rulebook](docs/RULEBOOK.md) · [Push to Agent-One](docs/PUSH-AGENT-ONE.md) · [ADRs](docs/adr/)
 
 </div>
 
@@ -35,6 +34,8 @@ with a single source of truth:
 | 🤖 **AI cycle** | 6 Zenovix agents + 16 KIA-OS skills behind one OpenAI-compatible gateway, with metering and caps | `back/ai-gateway` + `back/llm` |
 | ⚖️ **Parliament / HITL** | Any operation ≥ 50,000 Đ waits for a human decision — sweep, approve, reject | `back/server` + `back/bot` |
 | 🖥️ **Aurora dashboard** | fa/en bilingual, RTL-native, typed straight against the API contracts | `front/dashboard` |
+| 📱 **Telegram Mini App** | 30 real pages, mobile-first, RTL-native — the shop in the customer's pocket | `front/webapp` + `packages/nation` |
+| 🌐 **Public site** | Static PWA landing ("XDrop Marketplace") — installable, offline-capable | `front/public-site` |
 
 The same rewrite keeps what made v2 trustworthy — typed contracts, fail-closed
 security, release discipline — and drops everything that made it hard to change.
@@ -44,13 +45,14 @@ security, release discipline — and drops everything that made it hard to chang
 ```mermaid
 flowchart LR
     U(("👥 Telegram<br/>sellers")) --> BOT["back/bot<br/>grammY orchestrator"]
+    M(("📱 Mini App<br/>30 pages · RTL")) --> API
     O(("🧑‍💻 owner")) --> DASH["front/dashboard<br/>Aurora UI · fa/en · RTL"]
 
-    BOT -- loopback HTTP / webhook --> API
+    BOT -- "loopback HTTP / webhook" --> API
     DASH -- typed client --> API
 
     subgraph SERVER ["back/server — Fastify v5"]
-        API["/api/v1 · 21 endpoints<br/>HITL queue · audit log"]
+        API["/api/v1 · 28 endpoints<br/>HITL queue · audit log"]
         DB[("Prisma<br/>SQLite → PostgreSQL-ready")]
     end
 
@@ -59,6 +61,7 @@ flowchart LR
     GW --> LLM["back/llm<br/>OpenAI-compatible client"]
     LLM --> EXT["Any OpenAI-compatible<br/>provider — 3 env vars"]
 
+    NAT["packages/nation<br/>charter · money law"] -. types .-> M
     CON["back/contracts<br/>zod → OpenAPI 3.1 → typed client"] -. generates .-> API
     CON -. types .-> DASH
 ```
@@ -88,9 +91,11 @@ Real UI, real data — the stack booted with a seeded demo database (all 8 escro
 ## Project layout
 
 ```
-DropAgentX v3
+DropAgentX v3 (v4.3.0)
 ├── front/                    # everything the user touches
-│   └── dashboard/            # Aurora UI — React 19 + Vite + Tailwind v4, fa/en
+│   ├── dashboard/            # Aurora UI — React 19 + Vite + Tailwind v4, fa/en (owner console)
+│   ├── webapp/               # Telegram Mini App — 30 pages, mobile-first, RTL-native
+│   └── public-site/          # static PWA landing "XDrop Marketplace" (no build step)
 ├── back/                     # everything the engine runs
 │   ├── server/               # Fastify v5 + Prisma · /api/v1 · HITL · migration scripts
 │   ├── bot/                  # Telegram bot (grammY) · HITL queue in your pocket
@@ -98,7 +103,10 @@ DropAgentX v3
 │   ├── contracts/            # zod contracts → OpenAPI 3.1 → typed client
 │   ├── llm/                  # OpenAI-compatible client (ADR-006)
 │   └── ai-gateway/           # 6 agents · 16 skills · deterministic fallback · caps
-├── docs/                     # thesis, architecture, roadmap, deploy + 8 ADRs
+├── packages/
+│   ├── nation/               # nation charter — money law shared with the Mini App
+│   └── widget/               # legacy Zenovix chat widget (reference only)
+├── docs/                     # thesis, architecture, roadmap, deploy, rulebook + 8 ADRs
 ├── scripts/                  # release QC ritual (package-v3.sh)
 ├── Dockerfile                # single-service image (server + bot in one process)
 └── railway.json              # Railway deploy config — healthcheck on /api/v1/health
@@ -126,17 +134,18 @@ Non-negotiables enforced by tests, not by hope:
 **Prerequisites:** Node ≥ 22, [pnpm 9](https://pnpm.io) (via corepack), optional Docker.
 
 ```bash
-git clone https://github.com/KiaAgentX/DropAgentX-v3.git dropagentx-v3
-cd dropagentx
+git clone https://github.com/KiaAgentX/Agent-One.git agent-one
+cd agent-one
 
-pnpm install            # workspace install (7 packages)
+pnpm install            # workspace install (9 packages)
 cp .env.example .env    # then fill DATABASE_URL + KIA_ADMIN_KEY (see below)
 
-pnpm test               # 187 tests across 7 packages
-pnpm typecheck          # strict, zero errors
+pnpm test               # 273 tests across 9 packages
+pnpm typecheck          # strict, zero errors — 9/9 packages
 
 pnpm -F @dropagentx/server dev        # API on :8787 — docs at /api/v1/docs
 pnpm -F @dropagentx/dashboard dev     # dashboard on :5173
+pnpm -F @dropagentx/webapp dev        # Mini App dev server
 pnpm -F @dropagentx/bot dev           # Telegram bot in polling mode
 
 # optional: seed a rich demo dataset (replay-safe, balanced ledger) then re-open the dashboard
@@ -166,23 +175,37 @@ docker build -t dropagentx-v3 .
 docker run --rm -p 8787:8787 --env-file .env dropagentx-v3
 ```
 
-Railway: push the repo, attach a volume at `/app/db`, set the env vars from
-[`docs/DEPLOY.md`](docs/DEPLOY.md) — `railway.json` and the healthcheck
-(`/api/v1/health`) are already wired.
+On Railway the boot is **zero-config**: the image ships `DATABASE_URL=file:/app/db/v3.db`
+and the entrypoint re-defaults it before the fail-closed config gate — attach a volume
+at `/app/db`, set `TELEGRAM_BOT_TOKEN`, and the service boots. Railway injects `PORT`
+and the healthcheck (`/api/v1/health`) is already wired in `railway.json`.
+
+The bot runs **long-polling by default**; to switch Telegram to webhook mode, set:
+
+```ini
+BOT_MODE=webhook
+BOT_WEBHOOK_URL=https://<app>.up.railway.app/api/v1/bot/webhook
+TELEGRAM_WEBHOOK_SECRET=<openssl rand -hex 32>   # armed on both sides automatically
+```
+
+At boot the bot calls `setWebhook` itself (secret token included) and the server mounts
+`POST /api/v1/bot/webhook` — log lines `Telegram webhook mounted` / `webhook armed`
+confirm it. Details: [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ## API surface
 
-21 typed endpoints under `/api/v1`, all generated from zod contracts — the live
+28 typed endpoints under `/api/v1`, all generated from zod contracts — the live
 OpenAPI document is served at **`/api/v1/openapi.json`**, browsable docs at **`/api/v1/docs`**:
 
 | Group | Endpoints | Notes |
 |---|---|---|
 | Meta | `GET /health` · `GET /openapi.json` · `GET /docs` | healthcheck for Railway |
+| Accounts | `GET /accounts` · `POST /accounts` · `GET /accounts/{id}/balance` | derived balances, trial balance view |
 | Wallet | `POST /wallet/mint` · `POST /wallet/burn` | direction rules fail closed |
-| Accounts | `GET /accounts` | derived balances, trial balance view |
-| Escrow | `GET /escrows` + lifecycle routes | 8-state machine, idempotent |
-| HITL | `GET /hitl` · `POST /hitl/sweep` | ≥ 50,000 Đ queue |
+| Escrow | `GET /escrows` · `POST /escrows` · `GET /escrows/{id}` + 7 lifecycle routes | 8-state machine, idempotent |
+| HITL | `GET /hitl` · `POST /hitl` · `GET /hitl/{id}` · `approve`/`reject` · `POST /hitl/sweep` | ≥ 50,000 Đ queue |
 | Economy | `GET /economy` | circulating supply, treasury, tax |
+| System | `POST /system/backup` | on-demand DB snapshots |
 | AI | `POST /ai/chat` · `GET /ai/agents` · `GET /ai/skills` · `GET /ai/usage` | metered, capped |
 | Bot | `POST /bot/webhook` | armed automatically in single-service mode |
 
@@ -213,6 +236,8 @@ provider is unreachable. A second provider (`OPENAI_BASE_URL_2` / `OPENAI_API_KE
 
 - **Telegram auth** — every bot request is verified with the `initData` HMAC
   signature against the bot token; spoofed payloads are rejected.
+- **Webhook auth** — Telegram updates are verified against the
+  `x-telegram-bot-api-secret-token` header; the secret is armed on both sides at boot.
 - **Admin surface** — management routes require the `X-KIA-Key` header, compared
   timing-safe against `KIA_ADMIN_KEY`.
 - **Rate limiting** — per-IP throttling via `@fastify/rate-limit` (default 240 req/min).
@@ -234,16 +259,18 @@ pnpm -F @dropagentx/server exec tsx scripts/genesis-proof.ts --db file:./db/v3.d
 
 ## Testing
 
-187 tests, green in CI on every push:
+273 tests, green on every push — `pnpm typecheck` passes strict on 9/9 packages:
 
 | Package | Tests | Covers |
 |---|---:|---|
+| `back/server` | 43 | HTTP + security + HITL + AI cycle integration |
+| `front/dashboard` | 43 | UI, i18n, formatting, **client↔server roundtrip** |
+| `front/webapp` | 39 | Mini App pages, i18n, money law via the nation package |
 | `back/domain` | 40 | money, ledger closure, escrow machine, charter |
-| `back/server` | 35 | HTTP + security + HITL + AI cycle integration |
-| `front/dashboard` | 35 | UI, i18n, formatting, **client↔server roundtrip** |
+| `back/bot` | 34 | orchestrator + Telegram glue + webhook replay |
 | `back/ai-gateway` | 29 | agents, skills, metering, fallback |
-| `back/bot` | 20 | orchestrator + Telegram glue |
 | `back/llm` | 17 | OpenAI-compatible client contract |
+| `packages/nation` | 17 | nation charter — money law shared with the Mini App |
 | `back/contracts` | 11 | OpenAPI generation + typed client |
 
 The dashboard roundtrip test boots the **real server** on a temp database and drives
@@ -260,8 +287,10 @@ the **real typed client** through it — contracts are exercised end-to-end, not
 | 4 | Aurora dashboard — fa/en, RTL, typed client | ✅ |
 | 5 | AI gateway — 6 agents, 16 skills, caps, fallback | ✅ |
 | 6 | Legacy migration (Σ 187,672 Đ proven) + Railway release | ✅ |
+| 7 | Unification — 8 repos → one monorepo, Mini App + public site + nation charter, v4.3.0 on Agent-One | ✅ |
 
 Details and acceptance criteria per phase: [`docs/ROADMAP.md`](docs/ROADMAP.md).
+The unification lawbook: [`docs/RULEBOOK.md`](docs/RULEBOOK.md).
 Decisions and their consequences: [`docs/adr/`](docs/adr/) (ADR-001 → ADR-008).
 
 ## Documentation
@@ -271,7 +300,9 @@ Decisions and their consequences: [`docs/adr/`](docs/adr/) (ADR-001 → ADR-008)
 | [PRODUCT-THESIS.md](docs/PRODUCT-THESIS.md) | why this engine sells — 5 broken tools → 1, three revenue layers |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | hexagonal layout, data flow, module boundaries |
 | [ROADMAP.md](docs/ROADMAP.md) | phases with acceptance criteria |
-| [DEPLOY.md](docs/DEPLOY.md) | Railway single-service deploy, volume, migration runbook |
+| [DEPLOY.md](docs/DEPLOY.md) | Railway single-service deploy, volume, webhook, migration runbook |
+| [RULEBOOK.md](docs/RULEBOOK.md) | the unification lawbook — how 8 repos became one (v1.1) |
+| [PUSH-AGENT-ONE.md](docs/PUSH-AGENT-ONE.md) | pushing to the Agent-One remote — SHA map + recipe |
 | [ADR-001…008](docs/adr/) | architecture decision records — hexagonal, integer money, double entry, escrow machine, contracts/OpenAPI, OpenAI-compatible LLM, Vite SPA, AI gateway |
 
 ## Contributing
@@ -279,13 +310,13 @@ Decisions and their consequences: [`docs/adr/`](docs/adr/) (ADR-001 → ADR-008)
 This is the production line for a commercial product, so the rules are strict:
 
 1. **Branch** off `main`, keep commits in [conventional style](https://www.conventionalcommits.org) (`feat:`, `fix:`, `docs:`…).
-2. **Typecheck + tests must stay green** — `pnpm typecheck && pnpm test` before every push (CI enforces it).
+2. **Typecheck + tests must stay green** — `pnpm typecheck && pnpm test` before every push (273 tests, 9/9 typecheck).
 3. **Domain changes need a test** for each sacred rule they touch.
 4. **Never commit secrets** — the QC ritual rejects any real-looking key in env templates.
 
 The release ritual (`scripts/package-v3.sh`) refuses to ship unless the tree is
-clean, `git fsck` passes, all 187 tests are green, every workspace version matches,
-and no secret has leaked into the env template.
+clean, `git fsck` passes, all 273 tests are green, every workspace version matches
+(all 10 manifests in lockstep), and no secret has leaked into the env template.
 
 ## License
 
