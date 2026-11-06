@@ -26,9 +26,12 @@ export function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div>
-          <h2 className="brand">{t('app.title')}</h2>
-          <p className="tagline">{t('app.tagline')}</p>
+        <div className="brand-side">
+          <img src="/logo.png" alt="DropAgentX" width={44} height={44} className="brand-logo" />
+          <div>
+            <h2 className="brand">{t('app.title')}</h2>
+            <p className="tagline">{t('app.tagline')}</p>
+          </div>
         </div>
         <button type="button" className="lang-btn" onClick={toggleLang}>
           {t('lang.switch')}

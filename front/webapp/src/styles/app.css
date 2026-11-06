@@ -40,6 +40,12 @@ body {
   background: var(--bg-soft);
 }
 
+.brand-side { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+.brand-logo {
+  width: 44px; height: 44px; flex: none;
+  border-radius: 12px; object-fit: cover;
+  box-shadow: 0 0 0 1px var(--line), 0 0 14px rgb(168 85 247 / 0.35);
+}
 .brand { margin: 0; font-size: 1.15rem; font-weight: 700; letter-spacing: 0.02em; }
 .tagline { margin: 0.15rem 0 0; font-size: 0.75rem; color: var(--fg-dim); }
 
