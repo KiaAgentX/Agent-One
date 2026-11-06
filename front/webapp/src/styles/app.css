@@ -1,0 +1,126 @@
+@import 'tailwindcss';
+
+/* DropAgentX Mini App — Aurora palette (same DNA as dashboard), mobile-first,
+   RTL-safe via logical properties only. */
+
+:root {
+  color-scheme: dark;
+  --bg: #05070f;
+  --bg-soft: #0b1020;
+  --fg: #e8ecf8;
+  --fg-dim: #9aa4c0;
+  --accent: #7c5cff;
+  --accent-2: #22d3ee;
+  --line: #1c2340;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: Vazirmatn, system-ui, sans-serif;
+  min-height: 100%;
+}
+
+.app {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding-block-end: env(safe-area-inset-bottom);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1rem;
+  border-block-end: 1px solid var(--line);
+  background: var(--bg-soft);
+}
+
+.brand { margin: 0; font-size: 1.15rem; font-weight: 700; letter-spacing: 0.02em; }
+.tagline { margin: 0.15rem 0 0; font-size: 0.75rem; color: var(--fg-dim); }
+
+.lang-btn {
+  background: transparent;
+  color: var(--accent-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.hello { margin: 0.7rem 1rem 0; font-size: 0.85rem; color: var(--fg-dim); }
+
+.app-main { flex: 1; padding: 1rem; }
+
+/* Stub pages (until Step 5 fills them) */
+.stub h1 { font-size: 1.35rem; margin: 0.4rem 0; }
+.stub-note { color: var(--fg-dim); font-size: 0.8rem; margin: 0.3rem 0; }
+.stub-source {
+  display: block;
+  direction: ltr;
+  text-align: start;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.8rem;
+  color: var(--accent-2);
+  margin: 0.5rem 0;
+}
+.stub-cmd { color: var(--accent); font-size: 0.8rem; margin: 0.3rem 0; }
+.stub-lang { color: var(--fg-dim); font-size: 0.75rem; margin: 0.3rem 0; }
+
+.stub-links { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.9rem 0; }
+.stub-links button {
+  background: var(--bg-soft);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.stub-links button:hover { border-color: var(--accent); }
+
+.stub-groups { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-block-start: 1.2rem; }
+.chip {
+  font-size: 0.7rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--line);
+  color: var(--fg-dim);
+}
+
+/* Bottom navigation — max 5 tabs, mobile-first */
+.tabbar {
+  display: flex;
+  justify-content: space-around;
+  border-block-start: 1px solid var(--line);
+  background: var(--bg-soft);
+  padding: 0.45rem 0.2rem calc(0.45rem + env(safe-area-inset-bottom));
+  position: sticky;
+  inset-block-end: 0;
+}
+
+.tab {
+  background: transparent;
+  border: none;
+  color: var(--fg-dim);
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.6rem;
+  cursor: pointer;
+}
+
+.tab-active {
+  color: var(--fg);
+  background: color-mix(in oklab, var(--accent) 22%, transparent);
+}
