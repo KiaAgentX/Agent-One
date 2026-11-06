@@ -16,8 +16,12 @@ import { AccountsPage } from './pages/AccountsPage.js';
 import { EscrowsPage } from './pages/EscrowsPage.js';
 import { HitlPage } from './pages/HitlPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
+import { OPS_PAGES } from './pages/ops/index.js';
 
-const ADMIN_ROUTES: ReadonlySet<RoutePath> = new Set(['/accounts', '/escrows', '/hitl']);
+const ADMIN_ROUTES: ReadonlySet<string> = new Set([
+  '/accounts', '/escrows', '/hitl',
+  ...Object.keys(OPS_PAGES).map((slug) => `/ops/${slug}`),
+]);
 
 function Gate(): React.JSX.Element {
   const { t, setAdminKey, baseUrl } = useSession();
@@ -82,6 +86,11 @@ export function App(): React.JSX.Element {
 
   const page = useMemo(() => {
     if (ADMIN_ROUTES.has(route) && adminKey === null) return <Gate />;
+    if (route.startsWith('/ops/')) {
+      const slug = route.slice('/ops/'.length) as keyof typeof OPS_PAGES;
+      const Page = OPS_PAGES[slug];
+      return Page !== undefined ? <Page /> : <OverviewPage />;
+    }
     switch (route) {
       case '/overview':
         return <OverviewPage />;

@@ -6,6 +6,8 @@
  * (start/end, never left/right), so RTL never breaks (Phase-4 gate).
  */
 
+import { OPS_EN, OPS_FA } from './ops-i18n.js';
+
 export type Lang = 'fa' | 'en';
 
 export const LANGS: readonly Lang[] = ['fa', 'en'];
@@ -198,6 +200,8 @@ const fa = {
   'err.RATE_LIMITED': 'محدودیت نرخ — کمی صبر کنید و دوباره تلاش کنید.',
   'err.VALIDATION': 'داده‌ی فرم با قرارداد نمی‌خواند — فیلدها را بررسی کنید.',
   'err.GENERIC': 'خطا — دوباره تلاش کنید.',
+
+  ...OPS_FA,
 } as const;
 
 export type I18nKey = keyof typeof fa;
@@ -390,6 +394,8 @@ const en: Record<I18nKey, string> = {
   'err.RATE_LIMITED': 'Rate limited — wait a moment and retry.',
   'err.VALIDATION': 'Form data violates the contract — check the fields.',
   'err.GENERIC': 'Something went wrong — try again.',
+
+  ...OPS_EN,
 };
 
 export const DICTS: Record<Lang, Record<I18nKey, string>> = { fa, en };
@@ -405,4 +411,11 @@ export function formatMessage(template: string, params: Record<string, string | 
   return template.replace(/\{(\w+)\}/g, (_m, key: string) =>
     params[key] === undefined ? `{${key}}` : String(params[key]),
   );
+}
+
+/** Dynamic lookup for template keys (e.g. `ops.market.cat.${key}`) —
+ *  returns the key itself when absent, so a missing category degrades
+ *  visibly instead of crashing. */
+export function tDynamic(lang: Lang, key: string): string {
+  return (DICTS[lang] as Readonly<Record<string, string>>)[key] ?? key;
 }
