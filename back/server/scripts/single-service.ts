@@ -24,6 +24,24 @@ if (process.env.DATABASE_URL === undefined || process.env.DATABASE_URL.trim() ==
   process.env.DATABASE_URL = 'file:/app/db/v3.db';
   console.log('[single] DATABASE_URL unset — defaulting to file:/app/db/v3.db');
 }
+// Zero-config Mini App: when the webhook is armed the deployment origin is
+// known — derive the Mini-App base (served at /app by this same process) so
+// the bot's web_app buttons ("اپ تلگرام") arm without a fourth variable.
+// An explicit WEBAPP_BASE_URL always wins; non-https origins are ignored.
+if (process.env.WEBAPP_BASE_URL === undefined || process.env.WEBAPP_BASE_URL.trim() === '') {
+  const hook = process.env.BOT_WEBHOOK_URL;
+  if (hook !== undefined && hook.trim() !== '') {
+    try {
+      const origin = new URL(hook.trim()).origin;
+      if (origin.startsWith('https://')) {
+        process.env.WEBAPP_BASE_URL = `${origin}/app/`;
+        console.log(`[single] WEBAPP_BASE_URL derived from webhook origin → ${process.env.WEBAPP_BASE_URL}`);
+      }
+    } catch {
+      // non-URL webhook value — config validation will speak up, not us
+    }
+  }
+}
 const config = loadConfig();
 
 // Launch gate: a fresh Railway volume is an EMPTY SQLite file — ensure the
@@ -93,7 +111,7 @@ if (config.botToken !== undefined) {
 }
 
 await built.app.listen({ port: config.port, host: '0.0.0.0' });
-console.log(`[single] DropAgentX v3 on :${config.port} — docs at /api/v1/docs${stopBot !== null ? ' · bot attached' : ''}`);
+console.log(`[single] DropAgentX v3 on :${config.port} — site at /, mini app at /app, docs at /api/v1/docs${stopBot !== null ? ' · bot attached' : ''}`);
 
 const shutdown = async (): Promise<void> => {
   console.log('[single] shutting down…');

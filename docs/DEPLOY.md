@@ -6,7 +6,7 @@ vars together, or none).
 
 ## 1. Create the project
 
-1. Railway → New Project → Deploy from GitHub repo (`KiaAgentX/DropAgentX-v3`).
+1. Railway → New Project → Deploy from GitHub repo (`KiaAgentX/Agent-One`).
 2. Add a **Volume** mounted at `/app/db` (SQLite lives there — daily backups are
    the Railway volume snapshots; export monthly to the release archive too).
 3. Set the variables (`.env.example` is the authoritative list):
@@ -25,6 +25,10 @@ vars together, or none).
    ```
 
 4. Deploy. Health check: `GET /api/v1/health` → `{"status":"ok", …}`.
+   The **same process serves the front-ends**: public site at `/` and the Mini
+   App at `/app`. With `BOT_WEBHOOK_URL` set, the boot derives `WEBAPP_BASE_URL`
+   from its origin automatically — which arms the bot's web_app buttons
+   («اپ تلگرام»); set it explicitly only for a custom domain.
 
 > **Fresh-volume note:** on first boot the single-service runs `prisma db push
 > --skip-generate` against the mounted volume (idempotent — creates the schema

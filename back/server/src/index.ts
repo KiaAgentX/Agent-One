@@ -4,6 +4,9 @@
  */
 
 import Fastify, { type FastifyInstance } from 'fastify';
+import fastifyStatic from '@fastify/static';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { PrismaClient } from '@prisma/client';
 import * as C from '@dropagentx/contracts';
 import { loadConfig, type Config } from './config.js';
@@ -68,6 +71,41 @@ export async function buildApp(config: Config, prisma?: PrismaClient): Promise<B
       '<noscript>This page needs JavaScript. The raw spec lives at /api/v1/openapi.json</noscript>',
       '</body></html>',
     ].join('');
+  });
+
+  // ── Static surfaces (public site at /, Mini App at /app) ──
+  // The public PWA ships as PLAIN files (no build) and shares the API origin —
+  // its app.js fetches '/api/v1/…' and '/healthz' relatively. The Mini App is
+  // a Vite build (base './', hash router) so it mounts under any prefix with
+  // zero rewrite rules. Optional by design: a missing UI dir degrades to the
+  // API-only service with one boot warning — it must never take money down.
+  const publicSiteDir = process.env.PUBLIC_SITE_DIR ?? fileURLToPath(new URL('../../../front/public-site', import.meta.url));
+  const webappDistDir = process.env.WEBAPP_DIST_DIR ?? fileURLToPath(new URL('../../../front/webapp/dist', import.meta.url));
+  if (existsSync(publicSiteDir)) {
+    await app.register(fastifyStatic, { root: publicSiteDir, index: ['index.html'], wildcard: true });
+    console.log(`[static] public site at / ← ${publicSiteDir}`);
+  } else {
+    console.warn(`[static] public site dir missing, serving API only — ${publicSiteDir}`);
+  }
+  if (existsSync(webappDistDir)) {
+    await app.register(fastifyStatic, { root: webappDistDir, prefix: '/app/', index: ['index.html'], wildcard: true, decorateReply: false });
+    app.get('/app', (_req, reply) => reply.redirect('/app/'));
+    console.log(`[static] mini app at /app ← ${webappDistDir}`);
+  } else {
+    console.warn(`[static] webapp dist missing (run: pnpm -F @dropagentx/webapp build) — /app disabled`);
+  }
+  // The site's status chip polls /healthz — alias it onto the real health route.
+  app.get('/healthz', (_req, reply) => reply.redirect('/api/v1/health'));
+
+  // Unknown paths: keep Fastify's JSON shape under /api (tooling depends on
+  // it), bounce extension-less page GETs to the site, 404 everything else.
+  app.setNotFoundHandler((req, reply) => {
+    const url = req.raw.url ?? '/';
+    const clean = url.split('?')[0] ?? '/';
+    if (clean === '/' || clean.startsWith('/api/') || clean.startsWith('/api') || /\.[a-zA-Z0-9]+$/.test(clean) || (req.method !== 'GET' && req.method !== 'HEAD')) {
+      return reply.code(404).send({ message: `Route ${req.method} ${clean}: not found`, error: 'Not Found', statusCode: 404 });
+    }
+    return reply.redirect('/');
   });
 
   // Business endpoints — one loop, one source of truth.

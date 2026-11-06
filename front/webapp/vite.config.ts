@@ -4,6 +4,9 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Relative base: the built Mini App is served by the Fastify server under
+  // /app/ (hash router, zero rewrites) — absolute asset URLs would 404 there.
+  base: './',
   server: {
     port: 5174,
     strictPort: true,

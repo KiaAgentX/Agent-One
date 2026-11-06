@@ -17,6 +17,9 @@ const envSchema = z.object({
   TELEGRAM_ADMIN_CHAT_ID: z.preprocess(emptyAsUndefined, z.string().regex(/^\d+$/).optional()),
   BOT_MODE: z.enum(['polling', 'webhook']).default('polling'),
   BOT_WEBHOOK_URL: z.preprocess(emptyAsUndefined, z.string().url().optional()),
+  /** Public Mini-App base URL (Law 10) — arms the web_app buttons ("اپ تلگرام").
+   *  The single-service entry auto-derives it from BOT_WEBHOOK_URL's origin. */
+  WEBAPP_BASE_URL: z.preprocess(emptyAsUndefined, z.string().url().optional()),
   PORT: z.coerce.number().int().min(1).max(65535).default(8788),
   HITL_TTL_HOURS: z.coerce.number().int().min(1).max(720).default(24),
   ESCROW_TTL_HOURS: z.coerce.number().int().min(1).max(720).default(72),
@@ -30,6 +33,8 @@ export interface BotConfig {
   readonly adminChatId?: string;
   readonly mode: 'polling' | 'webhook';
   readonly webhookUrl?: string;
+  /** Public Mini-App base URL — enables the web_app buttons (Law 10). */
+  readonly webAppBaseUrl?: string;
   readonly port: number;
   readonly hitlTtlHours: number;
   readonly escrowTtlHours: number;
@@ -41,7 +46,7 @@ export function loadBotConfig(env: NodeJS.ProcessEnv = process.env): BotConfig {
     const details = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
     throw new Error(`Invalid bot environment — ${details}`);
   }
-  const { SERVER_BASE_URL, KIA_ADMIN_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID, BOT_MODE, BOT_WEBHOOK_URL, PORT, HITL_TTL_HOURS, ESCROW_TTL_HOURS } = parsed.data;
+  const { SERVER_BASE_URL, KIA_ADMIN_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID, BOT_MODE, BOT_WEBHOOK_URL, WEBAPP_BASE_URL, PORT, HITL_TTL_HOURS, ESCROW_TTL_HOURS } = parsed.data;
   if (BOT_MODE === 'webhook' && BOT_WEBHOOK_URL === undefined) {
     throw new Error('Invalid bot environment — BOT_WEBHOOK_URL is required when BOT_MODE=webhook');
   }
@@ -52,6 +57,7 @@ export function loadBotConfig(env: NodeJS.ProcessEnv = process.env): BotConfig {
     ...(TELEGRAM_ADMIN_CHAT_ID !== undefined ? { adminChatId: TELEGRAM_ADMIN_CHAT_ID } : {}),
     mode: BOT_MODE,
     ...(BOT_WEBHOOK_URL !== undefined ? { webhookUrl: BOT_WEBHOOK_URL } : {}),
+    ...(WEBAPP_BASE_URL !== undefined ? { webAppBaseUrl: WEBAPP_BASE_URL } : {}),
     port: PORT,
     hitlTtlHours: HITL_TTL_HOURS,
     escrowTtlHours: ESCROW_TTL_HOURS,

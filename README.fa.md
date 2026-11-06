@@ -9,8 +9,8 @@
 
 `front/` → سایت عمومی، مینی‌اپ تلگرام، داشبورد Aurora · `back/` → سرور، ربات و همه‌ی بسته‌های دامنه
 
-[![Version](https://img.shields.io/badge/version-4.3.0-818CF8?labelColor=0F1B2D)](package.json)
-[![Tests](https://img.shields.io/badge/tests-273%20passing-6EE7B7?labelColor=0F1B2D)](#تست‌ها)
+[![Version](https://img.shields.io/badge/version-4.4.0-818CF8?labelColor=0F1B2D)](package.json)
+[![Tests](https://img.shields.io/badge/tests-283%20passing-6EE7B7?labelColor=0F1B2D)](#تست‌ها)
 [![TypeScript strict](https://img.shields.io/badge/TypeScript-strict%20%2B%20noUncheckedIndexedAccess-3178C6?labelColor=0F1B2D)](tsconfig.base.json)
 [![Node](https://img.shields.io/badge/node-%E2%89%A522-339933?labelColor=0F1B2D&logo=node.js&logoColor=white)](package.json)
 [![pnpm + turbo](https://img.shields.io/badge/pnpm%209%20%2B%20turbo-monorepo-F9A03C?labelColor=0F1B2D&logo=pnpm&logoColor=white)](pnpm-workspace.yaml)
@@ -92,7 +92,7 @@ UI واقعی با دیتای واقعی — کل استک با دیتابیس �
 ## ساختار پروژه
 
 ```
-DropAgentX v3 (v4.3.0)
+DropAgentX v3 (v4.4.0)
 ├── front/                    # هرچه کاربر لمس می‌کند
 │   ├── dashboard/            # Aurora UI — React 19 + Vite + Tailwind v4، fa/en (کنسول مالک)
 │   ├── webapp/               # مینی‌اپ تلگرام — ۳۰ صفحه، موبایل‌اول، RTL بومی
@@ -140,7 +140,7 @@ cd agent-one
 pnpm install            # نصب workspace (۹ بسته)
 cp .env.example .env    # بعد DATABASE_URL و KIA_ADMIN_KEY را پر کنید
 
-pnpm test               # ۲۷۳ تست در ۹ بسته
+pnpm test               # ۲۸۳ تست در ۹ بسته
 pnpm typecheck          # strict، صفر خطا — ۹/۹ بسته
 
 pnpm -F @dropagentx/server dev        # API روی :8787 — مستندات در /api/v1/docs
@@ -168,7 +168,9 @@ MODEL=
 ### یک پروسه، یک انتشار
 
 در Railway (یا داکر) سرور و ربات در **یک پروسه** اجرا می‌شوند — ربات از طریق loopback
-با همان احراز هویت هر کلاینت با API حرف می‌زند:
+با همان احراز هویت هر کلاینت با API حرف می‌زند. همان پروسه **فرانت‌اندها را هم سرو
+می‌کند**: سایت عمومی روی **`/`** و مینی‌اپ بیلدشده روی **`/app`** (روتر هش، بدون
+rewrite) — یک دیپلوی، یک origin، صفر CORS:
 
 ```bash
 docker build -t dropagentx-v3 .
@@ -187,6 +189,11 @@ BOT_MODE=webhook
 BOT_WEBHOOK_URL=https://<app>.up.railway.app/api/v1/bot/webhook
 TELEGRAM_WEBHOOK_SECRET=<openssl rand -hex 32>   # خودکار دوطرفه مسلح می‌شود
 ```
+
+وقتی وبهوک مسلح شود، بوت **`WEBAPP_BASE_URL` را خودش از origin وبهوک می‌سازد**
+(`https://<app>.up.railway.app/app/`) — و همین کار **دکمه‌های وب‌اپ ربات را مسلح
+می‌کند** (دکمه‌ی «اپ تلگرام» زیر کارت هر فرمان و در منوی /start). فقط برای دامنه‌ی
+سفارشی `WEBAPP_BASE_URL` را دستی ست کنید.
 
 بات موقع بوت خودش `setWebhook` می‌زند (با secret token) و سرور `POST /api/v1/bot/webhook`
 را مونت می‌کند — لاگ‌های `Telegram webhook mounted` / `webhook armed` تأییدش می‌کنند.
@@ -258,15 +265,15 @@ pnpm -F @dropagentx/server exec tsx scripts/genesis-proof.ts --db file:./db/v3.d
 
 ## تست‌ها
 
-۲۷۳ تست، سبز روی هر push — `pnpm typecheck` هم strict و تمیز روی ۹/۹ بسته:
+۲۸۳ تست، سبز روی هر push — `pnpm typecheck` هم strict و تمیز روی ۹/۹ بسته:
 
 | بسته | تعداد | پوشش |
 |---|---:|---|
-| `back/server` | ۴۳ | HTTP + امنیت + HITL + چرخه‌ی AI (انتگراسیون) |
+| `back/server` | ۴۸ | HTTP + امنیت + HITL + چرخه‌ی AI + سطوح استاتیک (انتگراسیون) |
 | `front/dashboard` | ۴۳ | UI، i18n، فرمت‌بندی، **roundtrip کلاینت↔سرور** |
 | `front/webapp` | ۳۹ | صفحات مینی‌اپ، i18n، قانون پول با بسته‌ی nation |
 | `back/domain` | ۴۰ | پول، بستگی دفتر، ماشین اسکرو، منشور |
-| `back/bot` | ۳۴ | Orchestrator + چسب تلگرام + پخش وبهوک |
+| `back/bot` | ۳۹ | Orchestrator + چسب تلگرام + پخش وبهوک + دکمه‌های وب‌اپ |
 | `back/ai-gateway` | ۲۹ | ایجنت‌ها، مهارت‌ها، سنجش، fallback |
 | `back/llm` | ۱۷ | قرارداد کلاینت سازگار با OpenAI |
 | `packages/nation` | ۱۷ | منشور ملی — قانون پول مشترک با مینی‌اپ |
@@ -286,7 +293,7 @@ pnpm -F @dropagentx/server exec tsx scripts/genesis-proof.ts --db file:./db/v3.d
 | ۴ | داشبورد Aurora — fa/en، RTL، کلاینت تایپ‌دار | ✅ |
 | ۵ | گیت‌وی AI — ۶ ایجنت، ۱۶ مهارت، سقف، fallback | ✅ |
 | ۶ | مهاجرت لجسی (Σ ۱۸۷٬۶۷۲ Đ اثبات‌شده) + انتشار Railway | ✅ |
-| ۷ | یکپارچه‌سازی — ۸ ریپو → یک monorepo، مینی‌اپ + سایت عمومی + منشور ملی، v4.3.0 روی Agent-One | ✅ |
+| ۷ | یکپارچه‌سازی — ۸ ریپو → یک monorepo، مینی‌اپ + سایت عمومی + منشور ملی، v4.4.0 روی Agent-One | ✅ |
 
 جزئیات و معیارهای پذیرش هر فاز: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 قانون‌نامه‌ی یکپارچه‌سازی: [`docs/RULEBOOK.md`](docs/RULEBOOK.md).
@@ -309,12 +316,12 @@ pnpm -F @dropagentx/server exec tsx scripts/genesis-proof.ts --db file:./db/v3.d
 این خط تولیدِ یک محصول تجاری است، پس قواعد سخت‌گیرانه‌اند:
 
 1. از `main` **شاخه بگیرید**؛ کامیت‌ها [سبک conventional](https://www.conventionalcommits.org) (`feat:`، `fix:`، `docs:`…).
-2. **typecheck + تست باید سبز بماند** — `pnpm typecheck && pnpm test` قبل از هر push (۲۷۳ تست، typecheck ۹/۹).
+2. **typecheck + تست باید سبز بماند** — `pnpm typecheck && pnpm test` قبل از هر push (۲۸۳ تست، typecheck ۹/۹).
 3. **هر تغییر دامنه برای هر قانون مقدسی که لمس می‌کند تست می‌خواهد.**
 4. **هرگز اسرار را commit نکنید** — آیین QC هر کلید واقعی‌نما در قالب‌های env را رد می‌کند.
 
 آیین انتشار (`scripts/package-v3.sh`) حاضر نیست چیزی بفرستد مگر اینکه درخت تمیز باشد،
-`git fsck` بگذرد، هر ۲۷۳ تست سبز باشند، نسخه‌ی هر ۱۰ مانیفست هم‌گام باشد و هیچ اسری
+`git fsck` بگذرد، هر ۲۸۳ تست سبز باشند، نسخه‌ی هر ۱۰ مانیفست هم‌گام باشد و هیچ اسری
 به قالب env نشت نکرده باشد.
 
 ## مجوز

@@ -62,6 +62,7 @@ export function buildBot(config: BotConfig): RunningBot {
     v3: client,
     hitlTtlHours: config.hitlTtlHours,
     escrowTtlHours: config.escrowTtlHours,
+    ...(config.webAppBaseUrl !== undefined ? { webAppBaseUrl: config.webAppBaseUrl } : {}),
   });
 
   const botToken = config.botToken;

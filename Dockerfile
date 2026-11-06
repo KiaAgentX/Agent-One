@@ -55,6 +55,29 @@ COPY back/ai-gateway/package.json back/ai-gateway/
 # reporter can bury the one error that matters on CI.
 RUN pnpm install --frozen-lockfile --reporter=append-only --fetch-retries=5
 
+# The Mini App (front/webapp) is a Vite SPA — it must be BUILT into static
+# files before it can be served. A dedicated stage keeps the heavy React/Vite
+# toolchain out of the runtime image; only dist/ travels. Its build (base './'
+# + hash router) mounts under /app with zero rewrite rules. This stage installs
+# ONLY the webapp closure (webapp + contracts + nation) — no prisma postinstall
+# here, and no python/make/g++ needed (nothing native compiles for the SPA).
+FROM node:24-slim AS webapp
+ENV PNPM_HOME=/pnpm-store \
+    COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
+    COREPACK_HOME=/usr/local/share/corepack
+RUN corepack enable pnpm && corepack prepare pnpm@9.15.9 --activate \
+ && mkdir -p /pnpm-store
+WORKDIR /app
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json .npmrc ./
+COPY front/webapp/package.json front/webapp/
+COPY back/contracts/package.json back/contracts/
+COPY packages/nation/package.json packages/nation/
+RUN pnpm install --frozen-lockfile --filter @dropagentx/webapp... --reporter=append-only --fetch-retries=5
+COPY front/webapp front/webapp
+COPY back/contracts back/contracts
+COPY packages/nation packages/nation
+RUN pnpm --filter @dropagentx/webapp build
+
 FROM node:24-slim AS runtime
 ENV NODE_ENV=production \
     COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
@@ -75,6 +98,9 @@ COPY --from=deps /app /app
 # first boot — never ship a host database inside the image (.dockerignore
 # excludes db/).
 COPY . .
+# The webapp dist is gitignored (and .dockerignore'd from the context) — take
+# the built Mini App from its dedicated stage so /app serves the real UI.
+COPY --from=webapp /app/front/webapp/dist /app/front/webapp/dist
 RUN mkdir -p /app/db && chown -R node:node /app/db
 # Zero-config boot: the image itself satisfies the fail-closed DATABASE_URL
 # gate with the canonical volume path, so a bare `docker run` (or a platform
