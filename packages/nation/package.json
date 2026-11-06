@@ -1,0 +1,21 @@
+{
+  "name": "@dropagentx/nation",
+  "version": "1.0.0",
+  "description": "Digital Nation economy — the monetary charter as code (charter.ts IDENTICAL from AgentX), read-only indicators service (EVOLVED: db injected) and the public transparency API (EVOLVED: Express router → Fastify plugin, identical endpoints). Zero-loss merge of AgentX src/nation.",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "fastify": "^5.3.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "fastify": "^5.3.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.7"
+  }
+}

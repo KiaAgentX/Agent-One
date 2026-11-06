@@ -17,12 +17,21 @@ import * as D from '@dropagentx/domain';
 import type { EscrowView, V3Client } from '@dropagentx/contracts';
 import { accountIdForTelegram, resolveAccountRef } from '../identity.js';
 import { errorKey, fmtDin, isLocale, t, type Locale } from '../i18n.js';
+import {
+  findCommand,
+  renderCard,
+  renderMenu,
+  type CommandSpec,
+} from '../commands/registry.js';
 
 export type { Locale };
 
+/** Exactly one of `callbackData` / `webAppUrl` is set. */
 export interface InlineButton {
   readonly text: string;
-  readonly callbackData: string;
+  readonly callbackData?: string;
+  /** Telegram Mini-App deep link (Law 10: every command links its page). */
+  readonly webAppUrl?: string;
 }
 
 export interface BotReply {
@@ -59,6 +68,8 @@ export interface OrchestratorOptions {
   readonly defaultLocale?: Locale;
   readonly hitlTtlHours?: number;
   readonly escrowTtlHours?: number;
+  /** Public Mini-App base URL — enables web_app deep-link buttons (Law 10). */
+  readonly webAppBaseUrl?: string;
 }
 
 const MAX_DIN = 9_007_199_254_740_991;
@@ -161,13 +172,47 @@ export class Orchestrator {
         case 'sweep':
           return await this.sweep(actor, locale);
         default:
-          return { reply: { text: t(locale, 'unknownCommand') } };
+          return this.bridgeCommand(actor, locale, command);
       }
     } catch (err) {
       // Nothing may crash the bot loop — the last line of defense is honest.
       const reason = err instanceof Error ? err.message.slice(0, 160) : 'unknown failure';
       return { reply: { text: t(locale, 'errGeneric', { code: 'UNEXPECTED', message: reason }) } };
     }
+  }
+
+  /** Law 10 — the curated registry answers what the classic line knew.
+   *  /menu renders the whole curated surface; any other registry command gets
+   *  its identity card (+ Mini-App deep link). Unknown commands stay unknown. */
+  private bridgeCommand(actor: BotActor, locale: Locale, command: string): BotOutcome {
+    if (command === 'menu') {
+      return { reply: { text: renderMenu(actor.isAdmin, locale) } };
+    }
+    const spec = findCommand(command);
+    if (spec === undefined) {
+      return { reply: { text: t(locale, 'unknownCommand') } };
+    }
+    if (spec.access === 'admin' && !actor.isAdmin) {
+      return { reply: { text: t(locale, 'adminOnly') } };
+    }
+    return { reply: this.commandCardReply(spec, locale) };
+  }
+
+  private commandCardReply(spec: CommandSpec, locale: Locale): BotReply {
+    const card = renderCard(spec, locale);
+    const text = [card.title, card.meta, card.lineage, card.webapp].filter(Boolean).join('\n');
+    const keyboard =
+      spec.webapp !== undefined && this.opts.webAppBaseUrl !== undefined
+        ? [
+            [
+              {
+                text: locale === 'fa' ? 'اپ تلگرام' : 'Mini App',
+                webAppUrl: `${this.opts.webAppBaseUrl.replace(/\/$/, '')}#${spec.webapp}`,
+              },
+            ],
+          ]
+        : undefined;
+    return { text, keyboard };
   }
 
   /** Inline-keyboard callback: hitl:approve:<id> | hitl:reject:<id> — admin only.

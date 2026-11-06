@@ -33,7 +33,11 @@ function markupFor(outcome: BotOutcome): { reply_markup?: InlineKeyboard } | und
   const ik = new InlineKeyboard();
   for (const [rowIndex, row] of kb.entries()) {
     for (const button of row) {
-      ik.text(button.text, button.callbackData);
+      if (button.webAppUrl !== undefined) {
+        ik.webApp(button.text, button.webAppUrl);
+      } else {
+        ik.text(button.text, button.callbackData ?? 'noop');
+      }
     }
     if (rowIndex < kb.length - 1) ik.row();
   }
