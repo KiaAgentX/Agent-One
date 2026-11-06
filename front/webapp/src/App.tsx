@@ -3,7 +3,7 @@ import { useRoute } from './lib/router';
 import { useSyncExternalStore } from 'react';
 import { getLang, setLang, subscribeLang, t, toggleLang, type Lang } from './lib/i18n';
 import { initTelegram, isTelegram, tgUser } from './lib/telegram';
-import { StubPage } from './pages/StubPage';
+import { PAGE_COMPONENTS } from './pages';
 import { TAB_PAGES } from './routes';
 import { navigate } from './lib/router';
 
@@ -42,7 +42,10 @@ export function App() {
       )}
 
       <main className="app-main">
-        <StubPage page={page} />
+        {(() => {
+          const PageComponent = PAGE_COMPONENTS[page.id];
+          return PageComponent !== undefined ? <PageComponent /> : null;
+        })()}
       </main>
 
       <nav className="tabbar" aria-label="main">

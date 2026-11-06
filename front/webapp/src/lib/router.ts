@@ -19,8 +19,21 @@ function subscribe(cb: () => void): () => void {
   return () => window.removeEventListener('hashchange', cb);
 }
 
+/**
+ * useSyncExternalStore requires a STABLE snapshot (Object.is between calls)
+ * — parse returns a fresh object, so we cache by hash string. Without this,
+ * every render parses anew and React loops (Maximum update depth).
+ */
+let lastHash: string | null = null;
+let lastParsed = parse(DEFAULT_HASH);
+
 function current(): { page: PageDef; params: Record<string, string> } {
-  return parse(window.location.hash);
+  const hash = window.location.hash;
+  if (hash !== lastHash) {
+    lastHash = hash;
+    lastParsed = parse(hash);
+  }
+  return lastParsed;
 }
 
 export function useRoute(): { page: PageDef; params: Record<string, string> } {

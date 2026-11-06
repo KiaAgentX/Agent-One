@@ -96,22 +96,29 @@ export function pageById(id: string): PageDef | undefined {
   return PAGES.find((p) => p.id === id);
 }
 
-/** Match a hash like `/product/42` against defs with `:param` segments. */
+/** Match a hash like `/product/42` or `/checkout?product=p1&qty=2`. */
 export function matchRoute(
   hash: string,
 ): { page: PageDef; params: Record<string, string> } | undefined {
   const clean = hash.replace(/^#/, '') || '/home';
-  const segs = clean.split('/').filter(Boolean);
+  const [pathPart = '', queryPart] = clean.split('?');
+  const segs = pathPart.split('/').filter(Boolean);
+  const query = new URLSearchParams(queryPart ?? '');
   for (const page of PAGES) {
     const pat = page.path.split('/').filter(Boolean);
     if (pat.length !== segs.length) continue;
     const params: Record<string, string> = {};
     let ok = true;
     for (let i = 0; i < pat.length; i++) {
-      if (pat[i]!.startsWith(':')) params[pat[i]!.slice(1)] = decodeURIComponent(segs[i]!);
-      else if (pat[i] !== segs[i]) { ok = false; break; }
+      const patSeg = pat[i]!;
+      const seg = segs[i]!;
+      if (patSeg.startsWith(':')) params[patSeg.slice(1)] = decodeURIComponent(seg);
+      else if (patSeg !== seg) { ok = false; break; }
     }
-    if (ok) return { page, params };
+    if (ok) {
+      for (const [k, v] of query.entries()) params[k] = v;
+      return { page, params };
+    }
   }
   return undefined;
 }
