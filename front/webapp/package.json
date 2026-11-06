@@ -1,6 +1,6 @@
 {
   "name": "@dropagentx/webapp",
-  "version": "1.0.0",
+  "version": "4.3.0",
   "description": "DropAgentX Telegram Mini App (WebApp): 30 real pages, RTL fa/en, mobile-first, Aurora UI — Level-B UI per RULEBOOK Law 9. Reuses the nation charter package for money law.",
   "private": true,
   "type": "module",
