@@ -83,8 +83,14 @@ export function buildBot(config: BotConfig): RunningBot {
   void (async () => {
     if (config.mode === 'webhook' && config.webhookUrl !== undefined) {
       await bot.init();
-      await bot.api.setWebhook(config.webhookUrl);
-      console.log(`[bot] webhook armed → ${config.webhookUrl}`);
+      // Arm the secret on BOTH sides: Telegram must SEND x-telegram-bot-api-
+      // secret-token (setWebhook secret_token) for the handler's verification
+      // (webhookCallback secretToken) to accept updates. Verifying without
+      // arming rejects every update; arming without verifying protects nothing.
+      await bot.api.setWebhook(config.webhookUrl, {
+        ...(webhookSecret !== undefined ? { secret_token: webhookSecret } : {}),
+      });
+      console.log(`[bot] webhook armed → ${config.webhookUrl}${webhookSecret !== undefined ? ' (secret-token active)' : ''}`);
     } else {
       console.log('[bot] starting long-polling…');
       await bot.start({
