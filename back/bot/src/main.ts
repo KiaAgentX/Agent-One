@@ -10,6 +10,11 @@ import { loadBotConfig, type BotConfig } from './config.js';
 import { Orchestrator } from './core/orchestrator.js';
 import { createTelegramBot } from './telegram/bot.js';
 
+// The single-service entry imports '@dropagentx/bot/main' and destructures BOTH
+// factory and config loader — re-export so that contract is explicit (a missing
+// named export here surfaces as "loadBotConfig is not a function" at runtime).
+export { loadBotConfig, type BotConfig } from './config.js';
+
 export interface RunningBot {
   readonly orchestrator: Orchestrator;
   readonly client: ReturnType<typeof createV3Client>;

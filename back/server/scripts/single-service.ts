@@ -43,6 +43,7 @@ if (config.botToken !== undefined) {
   stopBot = () => running.stop();
 
   if (running.handleWebhook !== undefined) {
+    const handleWebhook = running.handleWebhook;
     const secret = running.webhookSecret;
     built.app.post('/api/v1/bot/webhook', async (req, reply) => {
       const url = `http://127.0.0.1:${config.port}${req.url}`;
@@ -57,7 +58,7 @@ if (config.botToken !== undefined) {
         },
         body,
       });
-      const response = await running.handleWebhook(request);
+      const response = await handleWebhook(request);
       const text = await response.text();
       reply.code(response.status);
       response.headers.forEach((value, key) => reply.header(key, value));
