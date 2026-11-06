@@ -39,6 +39,15 @@ describe('charter law inside the UI (nation reuse)', () => {
     expect(economyIndicators.citizens).toBe(466);
     expect(economyIndicators.genesis.gap).toBe(-63.0);
   });
+
+  it('nation page: the published books satisfy Article 7 (adjustments = −63)', async () => {
+    const { checkInvariant } = await import('@dropagentx/nation');
+    const adjustments = economyIndicators.genesis.itemization.reduce((a, i) => a + i.dinar, 0);
+    const report = checkInvariant(economyIndicators.supplyDinar, 187_735, adjustments);
+    expect(adjustments).toBe(-63);
+    expect(report.ok).toBe(true);
+    expect(report.gap).toBe(0);
+  });
 });
 
 describe('identity parity with the bot', () => {

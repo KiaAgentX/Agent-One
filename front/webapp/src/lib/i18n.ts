@@ -13,6 +13,7 @@ export const LANGS: readonly Lang[] = ['fa', 'en'];
 const fa = {
   'app.title': 'DropAgentX',
   'app.tagline': 'بازار، کیف پول و اقتصاد — داخل تلگرام',
+  'lang.switch': 'English',
 
   // common
   'common.loading': 'در حال بارگذاری…',
@@ -173,6 +174,7 @@ const fa = {
 const en: Record<keyof typeof fa, string> = {
   'app.title': 'DropAgentX',
   'app.tagline': 'Market, wallet and economy — inside Telegram',
+  'lang.switch': 'فارسی',
 
   'common.loading': 'Loading…',
   'common.error': 'Error',
