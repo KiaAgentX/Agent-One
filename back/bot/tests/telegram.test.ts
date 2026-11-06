@@ -173,4 +173,36 @@ describe('phase 3 — grammY glue end-to-end', () => {
     expect(approvedMsg).toBeDefined();
     expect((await must(client.economy())).balanced).toBe(true);
   });
+
+  it('/start renders the inline button menu and a go:* tap answers with data', async () => {
+    await bot.handleUpdate(messageUpdate('/start', 1101, 1101, 40) as Update);
+    const startMsg = sent.find((c) => c.method === 'sendMessage' && String(c.payload.text).includes('user:tg:1101'));
+    expect(startMsg).toBeDefined();
+    const kb = (startMsg?.payload.reply_markup as { inline_keyboard?: { callback_data?: string }[][] } | undefined)?.inline_keyboard;
+    expect(kb).toBeDefined();
+    expect(kb?.flat().map((b) => b.callback_data)).toContain('go:balance');
+
+    // The user taps «اقتصاد» — the update flows through the real callback path.
+    const tap: Update = {
+      update_id: 41,
+      callback_query: {
+        id: 'cb40',
+        from: { id: 1101, is_bot: false, first_name: 'Test', username: 'u1101' },
+        chat_instance: '1101',
+        data: 'go:economy',
+        message: {
+          message_id: 42,
+          from: { id: 123456, is_bot: true, first_name: 'DropAgentX' },
+          chat: { id: 1101, type: 'private', first_name: 'Test' },
+          date: Math.floor(Date.now() / 1000),
+          text: 'start',
+        },
+      },
+    };
+    await bot.handleUpdate(tap);
+    const econ = sent.find((c) => c.method === 'sendMessage' && String(c.payload.text).includes('اقتصاد ملی'));
+    expect(econ).toBeDefined();
+    const econKb = (econ?.payload.reply_markup as { inline_keyboard?: unknown[][] } | undefined)?.inline_keyboard;
+    expect(econKb).toBeDefined();
+  });
 });

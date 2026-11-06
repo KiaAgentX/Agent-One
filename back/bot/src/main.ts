@@ -6,7 +6,9 @@
 
 import { createV3Client } from '@dropagentx/contracts';
 import { webhookCallback } from 'grammy';
+import type { Bot } from 'grammy';
 import { loadBotConfig, type BotConfig } from './config.js';
+import { telegramCommandsFor } from './commands/registry.js';
 import { Orchestrator } from './core/orchestrator.js';
 import { createTelegramBot } from './telegram/bot.js';
 
@@ -26,6 +28,29 @@ export interface RunningBot {
   readonly handleWebhook?: (request: Request) => Promise<Response>;
   readonly webhookSecret?: string;
   stop(): Promise<void>;
+}
+
+/** Arm the Telegram command menu (the ☰ button) from the SAME curated registry
+ *  (Law 10) — users see the commands in Telegram's own UI, not a wall of text.
+ *  Non-fatal by design: a menu glitch must never keep a money bot down. */
+async function armBotMenu(bot: Bot, config: BotConfig): Promise<void> {
+  try {
+    const user = telegramCommandsFor('default', 'fa');
+    await bot.api.setMyCommands(user, { scope: { type: 'all_private_chats' } });
+    await bot.api.setMyCommands(user, { scope: { type: 'all_group_chats' } });
+    if (config.adminChatId !== undefined && /^\d+$/.test(config.adminChatId)) {
+      await bot.api.setMyCommands(telegramCommandsFor('admin', 'fa'), {
+        scope: { type: 'chat', chat_id: Number(config.adminChatId) },
+      });
+    }
+    console.log(
+      `[bot] command menu armed — ${user.length} user command(s)${
+        config.adminChatId !== undefined ? ' + admin scope' : ''
+      }`,
+    );
+  } catch (err) {
+    console.warn('[bot] setMyCommands failed (menu stays default):', err instanceof Error ? err.message : err);
+  }
 }
 
 export function buildBot(config: BotConfig): RunningBot {
@@ -91,7 +116,10 @@ export function buildBot(config: BotConfig): RunningBot {
         ...(webhookSecret !== undefined ? { secret_token: webhookSecret } : {}),
       });
       console.log(`[bot] webhook armed → ${config.webhookUrl}${webhookSecret !== undefined ? ' (secret-token active)' : ''}`);
+      await armBotMenu(bot, config);
     } else {
+      await bot.init();
+      await armBotMenu(bot, config);
       console.log('[bot] starting long-polling…');
       await bot.start({
         drop_pending_updates: true,

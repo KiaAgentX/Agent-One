@@ -215,17 +215,57 @@ export class Orchestrator {
     return { text, keyboard };
   }
 
-  /** Inline-keyboard callback: hitl:approve:<id> | hitl:reject:<id> — admin only.
-   *  The id itself contains colons, so only the first two segments are structural. */
+  /** Inline-keyboard callbacks:
+   *  hitl:approve:<id> | hitl:reject:<id> — admin only, the id contains colons
+   *  so only the first two segments are structural; go:<action> — the user
+   *  menu taps, each running the SAME handler as its slash command (one truth). */
   async handleCallback(actor: BotActor, data: string): Promise<BotOutcome> {
-    const locale = this.localeOf(actor);
     const [prefix = '', action = '', ...rest] = data.split(':');
     const hitlId = rest.join(':');
-    if (prefix !== 'hitl' || (action !== 'approve' && action !== 'reject') || hitlId.length === 0) {
-      return { reply: { text: t(locale, 'unknownCommand') } };
+    if (prefix === 'hitl') {
+      const locale = this.localeOf(actor);
+      if ((action !== 'approve' && action !== 'reject') || hitlId.length === 0) {
+        return { reply: { text: t(locale, 'unknownCommand') } };
+      }
+      if (!actor.isAdmin) return { reply: { text: t(locale, 'adminOnly') } };
+      return await this.decide(actor, locale, [action, hitlId], action === 'approve' ? 'APPROVED' : 'REJECTED');
     }
-    if (!actor.isAdmin) return { reply: { text: t(locale, 'adminOnly') } };
-    return await this.decide(actor, locale, [action, hitlId], action === 'approve' ? 'APPROVED' : 'REJECTED');
+    if (prefix === 'go') {
+      return await this.goAction(actor, this.localeOf(actor), action);
+    }
+    return { reply: { text: t(this.localeOf(actor), 'unknownCommand') } };
+  }
+
+  private async goAction(actor: BotActor, locale: Locale, action: string): Promise<BotOutcome> {
+    const menu = this.startKeyboard(actor, locale);
+    const withMenu = (text: string): BotOutcome => ({ reply: { text, keyboard: menu } });
+    switch (action) {
+      case 'balance':
+        return withMenu(await this.balanceText(locale, actor));
+      case 'orders':
+        return await this.orders(actor, locale);
+      case 'economy':
+        return withMenu(await this.economyText(locale));
+      case 'buy':
+        return withMenu(t(locale, 'buyUsage'));
+      case 'whoami':
+        return withMenu(this.whoamiText(actor, locale));
+      case 'help':
+        return withMenu(this.helpText(actor, locale));
+      case 'menu':
+        return withMenu(renderMenu(actor.isAdmin, locale));
+      case 'pending':
+        return await this.pending(actor, locale);
+      case 'sweep':
+        return await this.sweep(actor, locale);
+      case 'lang': {
+        const next: Locale = locale === 'fa' ? 'en' : 'fa';
+        this.locales.set(actor.telegramId, next);
+        return { reply: { text: t(next, 'langSwitched'), keyboard: this.startKeyboard(actor, next) } };
+      }
+      default:
+        return { reply: { text: t(locale, 'unknownCommand') } };
+    }
   }
 
   // ── user flows ──
@@ -235,7 +275,45 @@ export class Orchestrator {
     const name = actor.username !== undefined ? `@${actor.username}` : actor.telegramId;
     const account = accountIdForTelegram(actor.telegramId);
     const balancePart = balance.includes('\n') ? balance.split('\n').pop() ?? balance : balance;
-    return { reply: { text: `${t(locale, 'welcome', { name, account, balance: balancePart })}\n\n${this.helpText(actor, locale)}` } };
+    return {
+      reply: {
+        text: t(locale, 'welcome', { name, account, balance: balancePart }),
+        keyboard: this.startKeyboard(actor, locale),
+      },
+    };
+  }
+
+  /** The inline menu — /start and every go:* tap answers with it attached,
+   *  so the whole user surface is always one tap away (no command memorizing). */
+  private startKeyboard(actor: BotActor, locale: Locale): InlineButton[][] {
+    const kb: InlineButton[][] = [
+      [
+        { text: t(locale, 'kbBalance'), callbackData: 'go:balance' },
+        { text: t(locale, 'kbOrders'), callbackData: 'go:orders' },
+      ],
+      [
+        { text: t(locale, 'kbBuy'), callbackData: 'go:buy' },
+        { text: t(locale, 'kbEconomy'), callbackData: 'go:economy' },
+      ],
+      [
+        { text: t(locale, 'kbWhoami'), callbackData: 'go:whoami' },
+        { text: t(locale, 'kbLang'), callbackData: 'go:lang' },
+      ],
+      [
+        { text: t(locale, 'kbHelp'), callbackData: 'go:help' },
+        { text: t(locale, 'kbMenu'), callbackData: 'go:menu' },
+      ],
+    ];
+    if (this.opts.webAppBaseUrl !== undefined) {
+      kb.push([{ text: t(locale, 'kbOpenApp'), webAppUrl: this.opts.webAppBaseUrl.replace(/\/$/, '') }]);
+    }
+    if (actor.isAdmin) {
+      kb.push([
+        { text: t(locale, 'kbPending'), callbackData: 'go:pending' },
+        { text: t(locale, 'kbSweep'), callbackData: 'go:sweep' },
+      ]);
+    }
+    return kb;
   }
 
   private helpText(actor: BotActor, locale: Locale): string {

@@ -322,3 +322,74 @@ describe('phase 3 — orchestrator over the v3 server', () => {
     expect(economy.balanced).toBe(true);
   });
 });
+
+describe('button menu — /start inline keyboard + go:* taps', () => {
+  it('/start ships the button menu; the governance row is admin-only', async () => {
+    await run(ali, '/lang fa', 'b0'); // earlier tests may have switched the shared actor's locale
+    const start = await run(ali, '/start', 'b1');
+    expect(start.reply.text).toContain('user:tg:1001');
+    const flat = (start.reply.keyboard ?? []).flat();
+    const datas = flat.map((b) => b.callbackData);
+    for (const expected of ['go:balance', 'go:orders', 'go:buy', 'go:economy', 'go:whoami', 'go:lang', 'go:help', 'go:menu']) {
+      expect(datas).toContain(expected);
+    }
+    expect(datas).not.toContain('go:pending');
+    expect(flat.find((b) => b.callbackData === 'go:balance')?.text).toContain('موجودی');
+
+    const adminStart = await run(owner, '/start', 'b2');
+    const adminDatas = (adminStart.reply.keyboard ?? []).flat().map((b) => b.callbackData);
+    expect(adminDatas).toContain('go:pending');
+    expect(adminDatas).toContain('go:sweep');
+  });
+
+  it('go:* taps run the SAME handlers as their slash commands', async () => {
+    await run(ali, '/lang fa', 'b0');
+    await seed('user:tg:1001', 500);
+    const balance = await orch.handleCallback(ali, 'go:balance');
+    expect(balance.reply.text).toContain('user:tg:1001');
+    expect(balance.reply.keyboard).toBeDefined();
+
+    const economy = await orch.handleCallback(ali, 'go:economy');
+    expect(economy.reply.text).toContain('اقتصاد ملی');
+
+    const buyUsage = await orch.handleCallback(ali, 'go:buy');
+    expect(buyUsage.reply.text).toContain('/buy');
+
+    const whoami = await orch.handleCallback(ali, 'go:whoami');
+    expect(whoami.reply.text).toContain('user:tg:1001');
+
+    const help = await orch.handleCallback(ali, 'go:help');
+    expect(help.reply.text).toContain('/balance');
+
+    const menu = await orch.handleCallback(ali, 'go:menu');
+    expect(menu.reply.text).toContain('منوی دستورها');
+
+    const gate = await orch.handleCallback(ali, 'go:pending');
+    expect(gate.reply.text).toContain('ادمین');
+
+    const unknown = await orch.handleCallback(ali, 'go:banana');
+    expect(unknown.reply.text).toContain('ناشناخته');
+  });
+
+  it('go:lang toggles the locale and the menu labels follow', async () => {
+    await run(ali, '/lang fa', 'b0');
+    const toEn = await orch.handleCallback(ali, 'go:lang');
+    expect(toEn.reply.text).toContain('Language switched');
+    expect(toEn.reply.keyboard?.flat().some((b) => b.text.includes('Balance'))).toBe(true);
+
+    const backToFa = await orch.handleCallback(ali, 'go:lang');
+    expect(backToFa.reply.text).toContain('زبان به انگلیسی');
+    expect(backToFa.reply.keyboard?.flat().some((b) => b.text.includes('موجودی'))).toBe(true);
+  });
+
+  it('hitl callbacks still settle through the same handler', async () => {
+    await seed('user:tg:1001', 60_000);
+    await run(ali, '/buy 60000 2002 gold', 'bh1');
+    await run(reza, '/deliver esc:buy:1001:bh1', 'bh2');
+    await run(ali, '/release esc:buy:1001:bh1', 'bh3');
+    const hitlId = 'hitl:release:esc:buy:1001:bh1:bh3';
+    const res = await orch.handleCallback(owner, `hitl:approve:${hitlId}`);
+    expect(res.reply.text).toContain('✅');
+    expect((await must(client.getEscrow('esc:buy:1001:bh1'))).status).toBe('RELEASED');
+  });
+});
