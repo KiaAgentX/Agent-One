@@ -32,8 +32,14 @@ git fsck --no-dangling >/dev/null
 echo "   ok"
 
 echo "── QC 3: typecheck + tests"
-pnpm -r typecheck >/dev/null 2>&1 || { echo "FAIL: typecheck"; exit 1; }
-TESTS=$(pnpm -r --no-bail test 2>/dev/null | grep -oE "Tests  [0-9]+ passed" | awk '{s+=$2} END {print s}')
+if ! pnpm -r typecheck >/dev/null 2>&1; then echo "FAIL: typecheck"; exit 1; fi
+TESTLOG=$(mktemp)
+if ! pnpm -r --no-bail test >"$TESTLOG" 2>&1; then
+  echo "FAIL: test run exited nonzero — last failures:"; grep -E "FAIL|failed|Error" "$TESTLOG" | head -8
+  rm -f "$TESTLOG"; exit 1
+fi
+TESTS=$(grep -oE "Tests  [0-9]+ passed" "$TESTLOG" | awk '{s+=$2} END {print s}')
+rm -f "$TESTLOG"
 if [ "${TESTS:-0}" -lt 273 ]; then echo "FAIL: expected ≥273 tests, got ${TESTS:-0}"; exit 1; fi
 echo "   ok (${TESTS} tests green)"
 
