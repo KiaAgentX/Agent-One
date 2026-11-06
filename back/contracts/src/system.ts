@@ -12,6 +12,12 @@ export const healthResponseSchema = z.object({
   version: z.string(),
   llmConfigured: z.boolean(),
   llmModel: z.string().nullable(),
+  // Dashboard status chips (settings page) — additive and optional so older
+  // clients keep validating.
+  db: z.string().optional(),
+  bot: z.string().optional(),
+  ai: z.string().optional(),
+  uptime: z.number().optional(),
 });
 
 export type HealthResponse = z.infer<typeof healthResponseSchema>;

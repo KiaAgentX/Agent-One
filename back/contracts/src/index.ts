@@ -11,5 +11,6 @@ export * from './hitl.js';
 export * from './economy.js';
 export * from './system.js';
 export * from './ai.js';
+export * from './dashboard.js';
 export * from './openapi.js';
 export * from './client.js';

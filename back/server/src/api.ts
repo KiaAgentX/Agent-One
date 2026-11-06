@@ -5,6 +5,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { Prisma } from '@prisma/client';
 import * as D from '@dropagentx/domain';
 import * as C from '@dropagentx/contracts';
@@ -113,12 +114,17 @@ export const API_ROUTES: ApiRoute[] = [
       } catch {
         throw new HttpFailure(503, 'DB_DOWN', 'The server cannot reach its database.');
       }
+      // The command center's settings page renders these chips directly.
       return {
         status: 'ok',
         service: 'dropagentx-v3-server',
-        version: '1.0.0',
+        version: serverVersion(),
         llmConfigured: config.llm !== undefined,
         llmModel: config.llm?.model ?? null,
+        db: 'ok',
+        bot: config.botToken !== undefined ? 'ok' : 'disabled',
+        ai: config.llm !== undefined ? 'ok' : 'disabled',
+        uptime: process.uptime(),
       };
     },
   },
@@ -799,6 +805,547 @@ export const API_ROUTES: ApiRoute[] = [
       return { userId, usedToday: used, cap, remainingToday: Math.max(0, cap - used) };
     },
   },
+
+  // ══ Command center (front/public-site) ═════════════════════════════════════
+  // The dashboard SPA consumes ONLY these shapes: every route answers the
+  // `{ ok: true, data: … }` envelope its api() wrapper requires. Read models
+  // are DERIVED from the ledger/escrows/products tables — no second truth.
+  {
+    method: 'get',
+    path: '/brand',
+    operationId: 'getBrand',
+    summary: 'White-label shell branding (BRAND_NAME / BRAND_TAGLINE env → defaults)',
+    tag: 'dashboard',
+    security: 'public',
+    response: C.brandResponseSchema,
+    handler: async ({ config }) => ({
+      ok: true as const,
+      data: {
+        name: config.brandName ?? 'XDrop Marketplace',
+        tagline: config.brandTagline ?? 'Market, wallets & economy — inside Telegram',
+      },
+    }),
+  },
+  {
+    method: 'get',
+    path: '/overview',
+    operationId: 'getOverview',
+    summary: '24h KPIs + 14-day series + top products + recent orders, derived from live tables',
+    tag: 'dashboard',
+    security: 'admin',
+    response: C.overviewResponseSchema,
+    handler: async ({ store }) => {
+      const prisma = store.prisma;
+      const since24 = new Date(Date.now() - 24 * 3_600_000);
+      const since14 = new Date(Date.now() - 14 * 24 * 3_600_000);
+      const [users, productCount, orders24, settled24, pendingApprovals, aiCalls, escrows14, topGrouped, recent] =
+        await Promise.all([
+          prisma.account.count({ where: { kind: 'user' } }),
+          prisma.product.count({ where: { active: true } }),
+          prisma.escrow.count({ where: { createdAt: { gte: since24 } } }),
+          prisma.escrow.aggregate({ _sum: { amount: true }, where: { status: 'RELEASED', createdAt: { gte: since24 } } }),
+          prisma.hitlRequest.count({ where: { status: 'PENDING' } }),
+          prisma.aiUsage.count({ where: { at: { gte: since24 } } }),
+          prisma.escrow.findMany({ where: { createdAt: { gte: since14 } }, select: { createdAt: true, amount: true, status: true } }),
+          prisma.escrow.groupBy({ by: ['productRef'], where: { status: 'RELEASED', productRef: { not: null } }, _count: { _all: true } }),
+          prisma.escrow.findMany({ orderBy: { createdAt: 'desc' }, take: 8 }),
+        ]);
+      // Zero-filled 14-day series (UTC calendar days).
+      const series = emptySeries();
+      const dayIdx = new Map(series.map((s, i) => [s.date, i]));
+      for (const e of escrows14) {
+        const i = dayIdx.get(utcDay(e.createdAt));
+        const slot = i === undefined ? undefined : series[i];
+        if (slot === undefined) continue;
+        slot.orders += 1;
+        if (e.status === 'RELEASED') slot.revenue += e.amount;
+      }
+      const refs = [...new Set([...topGrouped.map((g) => g.productRef ?? ''), ...recent.map((e) => e.productRef ?? '')])].filter(Boolean);
+      const prodRows = refs.length ? await prisma.product.findMany({ where: { id: { in: refs } }, select: { id: true, title: true } }) : [];
+      const titleOf = new Map(prodRows.map((p) => [p.id, p.title]));
+      const buyerIds = [...new Set(recent.map((e) => e.buyerId))];
+      const buyers = buyerIds.length ? await prisma.account.findMany({ where: { id: { in: buyerIds } }, select: { id: true, label: true } }) : [];
+      const labelOf = new Map(buyers.map((b) => [b.id, b.label]));
+      const topProducts = topGrouped
+        .map((g) => ({ title: titleOf.get(g.productRef ?? '') ?? g.productRef ?? '—', salesCount: g._count._all }))
+        .sort((a, b) => b.salesCount - a.salesCount)
+        .slice(0, 5);
+      return {
+        ok: true as const,
+        data: {
+          users,
+          products: productCount,
+          orders: orders24,
+          revenueStars: 0,
+          revenueCredits: settled24._sum.amount ?? 0,
+          pendingApprovals,
+          aiCalls,
+          series,
+          topProducts,
+          recentOrders: recent.map((e) => ({
+            id: e.id,
+            title: e.productRef !== null ? titleOf.get(e.productRef) ?? e.productRef : null,
+            buyer: { name: labelOf.get(e.buyerId) ?? e.buyerId, username: null },
+            totalStars: 0,
+            totalCredits: e.amount,
+            status: DASH_STATUS[e.status] ?? 'pending',
+            createdAt: e.createdAt.toISOString(),
+          })),
+        },
+      };
+    },
+  },
+  {
+    method: 'get',
+    path: '/products',
+    operationId: 'listDashProducts',
+    summary: 'Market listings for the command center (public read, q search, limit/offset)',
+    tag: 'dashboard',
+    security: 'public',
+    query: z.object({
+      limit: z.coerce.number().int().min(1).max(100).default(12),
+      offset: z.coerce.number().int().min(0).default(0),
+      q: z.string().max(80).optional(),
+    }),
+    response: C.productListResponseSchema,
+    handler: async ({ store }, { query }) => {
+      const prisma = store.prisma;
+      const q = query as unknown as { limit: number; offset: number; q?: string };
+      const where = q.q !== undefined ? { title: { contains: q.q } } : {};
+      const [rows, total, sales] = await Promise.all([
+        prisma.product.findMany({ where, orderBy: { createdAt: 'desc' }, skip: q.offset, take: q.limit }),
+        prisma.product.count({ where }),
+        prisma.escrow.groupBy({ by: ['productRef'], where: { status: 'RELEASED', productRef: { not: null } }, _count: { _all: true } }),
+      ]);
+      const salesOf = new Map(sales.map((s) => [s.productRef ?? '', s._count._all]));
+      return {
+        ok: true as const,
+        data: {
+          items: rows.map((r) => productView(r, salesOf.get(r.id) ?? 0)),
+          total,
+          limit: q.limit,
+          offset: q.offset,
+        },
+      };
+    },
+  },
+  {
+    method: 'post',
+    path: '/products',
+    operationId: 'createDashProduct',
+    summary: 'Create a house listing (seller = treasury); Stars are not a ledger rail — credits only',
+    tag: 'dashboard',
+    security: 'admin',
+    body: C.createProductRequestSchema,
+    response: C.productMutationResponseSchema,
+    status: 201,
+    handler: async ({ store }, { body }) => {
+      const input = body as C.CreateProductRequest;
+      const row = await store.prisma.product.create({
+        data: {
+          id: `prod_${randomUUID()}`,
+          sellerId: D.TREASURY_ACCOUNT_ID,
+          title: input.title,
+          description: input.description ?? '',
+          priceDin: input.priceCredits ?? 0,
+          category: input.category ?? 'general',
+        },
+      });
+      await store.prisma.auditLog.create({ data: { actor: 'dashboard', action: 'product.create', target: row.id } });
+      return { ok: true as const, data: productView(row, 0) };
+    },
+  },
+  {
+    method: 'patch',
+    path: '/products/{id}',
+    operationId: 'updateDashProduct',
+    summary: 'Edit a listing (title/category/description/price/active; stock & stars are dashboard-only views)',
+    tag: 'dashboard',
+    security: 'admin',
+    params: z.object({ id: C.idSchema }),
+    body: C.updateProductRequestSchema,
+    response: C.productMutationResponseSchema,
+    handler: async ({ store }, { params, body }) => {
+      const input = body as C.UpdateProductRequest;
+      const existing = await store.prisma.product.findUnique({ where: { id: params.id! } });
+      if (existing === null) {
+        throw new DomainFailure({ code: 'PRODUCT_NOT_FOUND', message: `Product ${params.id} does not exist` });
+      }
+      const row = await store.prisma.product.update({
+        where: { id: params.id! },
+        data: {
+          ...(input.title !== undefined ? { title: input.title } : {}),
+          ...(input.category !== undefined ? { category: input.category } : {}),
+          ...(input.description !== undefined ? { description: input.description } : {}),
+          ...(input.priceCredits !== undefined ? { priceDin: input.priceCredits } : {}),
+          ...(input.active !== undefined ? { active: input.active } : {}),
+        },
+      });
+      await store.prisma.auditLog.create({ data: { actor: 'dashboard', action: 'product.update', target: row.id } });
+      return { ok: true as const, data: productView(row, undefined) };
+    },
+  },
+  {
+    method: 'delete',
+    path: '/products/{id}',
+    operationId: 'archiveDashProduct',
+    summary: 'Archive a listing (soft — the row stays for ledger/escrow references)',
+    tag: 'dashboard',
+    security: 'admin',
+    params: z.object({ id: C.idSchema }),
+    response: C.productMutationResponseSchema,
+    handler: async ({ store }, { params }) => {
+      const existing = await store.prisma.product.findUnique({ where: { id: params.id! } });
+      if (existing === null) {
+        throw new DomainFailure({ code: 'PRODUCT_NOT_FOUND', message: `Product ${params.id} does not exist` });
+      }
+      const row = await store.prisma.product.update({ where: { id: params.id! }, data: { active: false } });
+      await store.prisma.auditLog.create({ data: { actor: 'dashboard', action: 'product.archive', target: row.id } });
+      return { ok: true as const, data: productView(row, undefined) };
+    },
+  },
+  {
+    method: 'get',
+    path: '/orders',
+    operationId: 'listDashOrders',
+    summary: 'Escrow marketplace orders in dashboard shapes (status filter + paging)',
+    tag: 'dashboard',
+    security: 'admin',
+    query: z.object({
+      limit: z.coerce.number().int().min(1).max(100).default(20),
+      offset: z.coerce.number().int().min(0).default(0),
+      status: z.enum(['all', 'paid', 'pending', 'delivered', 'refunded', 'cancelled']).default('all'),
+    }),
+    response: C.orderListResponseSchema,
+    handler: async ({ store }, { query }) => {
+      const prisma = store.prisma;
+      const q = query as unknown as { limit: number; offset: number; status: 'all' | 'paid' | 'pending' | 'delivered' | 'refunded' | 'cancelled' };
+      const statuses = ORDER_STATUS_FILTER[q.status];
+      const where = statuses !== undefined ? { status: { in: [...statuses] } } : {};
+      const [rows, total] = await Promise.all([
+        prisma.escrow.findMany({ where, orderBy: { createdAt: 'desc' }, skip: q.offset, take: q.limit }),
+        prisma.escrow.count({ where }),
+      ]);
+      const refIds = [...new Set(rows.map((e) => e.productRef).filter((v): v is string => v !== null))];
+      const buyerIds = [...new Set(rows.map((e) => e.buyerId))];
+      const [prodRows, buyers] = await Promise.all([
+        refIds.length ? prisma.product.findMany({ where: { id: { in: refIds } }, select: { id: true, title: true } }) : [],
+        buyerIds.length ? prisma.account.findMany({ where: { id: { in: buyerIds } }, select: { id: true, label: true } }) : [],
+      ]);
+      const titleOf = new Map(prodRows.map((p) => [p.id, p.title]));
+      const labelOf = new Map(buyers.map((b) => [b.id, b.label]));
+      return {
+        ok: true as const,
+        data: {
+          items: rows.map((e) => ({
+            id: e.id,
+            product: e.productRef !== null ? titleOf.get(e.productRef) ?? e.productRef : '—',
+            buyer: { name: labelOf.get(e.buyerId) ?? e.buyerId, username: null },
+            totalStars: 0,
+            totalCredits: e.amount,
+            status: DASH_STATUS[e.status] ?? 'pending',
+            createdAt: e.createdAt.toISOString(),
+          })),
+          total,
+        },
+      };
+    },
+  },
+  {
+    method: 'post',
+    path: '/orders/{id}/status',
+    operationId: 'dashOrderAction',
+    summary: 'deliver → DELIVERED (from FUNDED) · cancel → CANCELLED (from CREATED) · refund → REFUNDED (from DISPUTED)',
+    tag: 'dashboard',
+    security: 'admin',
+    params: z.object({ id: C.idSchema }),
+    body: C.orderActionRequestSchema,
+    response: C.orderActionResponseSchema,
+    handler: async ({ store }, { params, body }) => {
+      const input = body as C.OrderActionRequest;
+      const id = params.id!;
+      const escrow = await store.getEscrow(id);
+      if (escrow === null) {
+        throw new DomainFailure({ code: 'ESCROW_NOT_FOUND', message: `Escrow ${id} does not exist` });
+      }
+      const run: Parameters<typeof store.apply>[0]['run'] =
+        input.action === 'deliver'
+          ? (ledger, registry) => D.deliverEscrow(ledger, registry, { escrowId: id })
+          : input.action === 'cancel'
+            ? (ledger, registry) => D.cancelEscrow(ledger, registry, { escrowId: id })
+            : (ledger, registry) => D.refundEscrow(ledger, registry, { escrowId: id });
+      const result = await store.apply({
+        actor: 'dashboard',
+        action: `escrow.${input.action}`,
+        target: id,
+        escrowId: id,
+        run,
+      });
+      return { ok: true as const, data: { id, status: requireEscrow(result).status } };
+    },
+  },
+  {
+    method: 'get',
+    path: '/users',
+    operationId: 'listDashUsers',
+    summary: 'User accounts (kind=user) for the wallets→users subtab',
+    tag: 'dashboard',
+    security: 'admin',
+    query: z.object({ limit: z.coerce.number().int().min(1).max(200).default(100) }),
+    response: C.dashUserListResponseSchema,
+    handler: async ({ store }, { query }) => {
+      const take = Number(query.limit ?? 100);
+      const rows = await store.prisma.account.findMany({
+        where: { kind: 'user' },
+        orderBy: { createdAt: 'desc' },
+        take,
+        select: { id: true, label: true, createdAt: true },
+      });
+      return {
+        ok: true as const,
+        data: {
+          items: rows.map((a) => ({
+            id: a.id,
+            name: a.label ?? a.id,
+            username: null,
+            role: 'user',
+            language: null,
+            createdAt: a.createdAt.toISOString(),
+          })),
+        },
+      };
+    },
+  },
+  {
+    method: 'get',
+    path: '/wallets',
+    operationId: 'listDashWallets',
+    summary: 'Derived balances + escrow-locked amounts per user account',
+    tag: 'dashboard',
+    security: 'admin',
+    query: z.object({ limit: z.coerce.number().int().min(1).max(200).default(100) }),
+    response: C.dashWalletListResponseSchema,
+    handler: async ({ store }, { query }) => {
+      const take = Number(query.limit ?? 100);
+      const [all, lockedRows] = await Promise.all([
+        store.listAccountsWithBalances(),
+        store.prisma.escrow.groupBy({ by: ['buyerId'], where: { status: 'FUNDED' }, _sum: { amount: true } }),
+      ]);
+      const lockedOf = new Map(lockedRows.map((r) => [r.buyerId, r._sum.amount ?? 0]));
+      return {
+        ok: true as const,
+        data: {
+          items: all
+            .filter((a) => a.kind === 'user')
+            .slice(0, take)
+            .map((a) => ({
+              name: a.label ?? a.id,
+              username: null,
+              role: 'user',
+              balance: a.balance,
+              locked: lockedOf.get(a.id) ?? 0,
+              credits: a.balance,
+            })),
+        },
+      };
+    },
+  },
+  {
+    method: 'get',
+    path: '/quests',
+    operationId: 'listDashQuests',
+    summary: 'Quest rail — empty until the quest engine ships (renders a clean empty state)',
+    tag: 'dashboard',
+    security: 'public',
+    response: C.dashListResponseSchema,
+    handler: async () => ({ ok: true as const, data: { items: [] } }),
+  },
+  {
+    method: 'get',
+    path: '/bookings',
+    operationId: 'listDashBookings',
+    summary: 'Bookings rail — empty until the booking engine ships (renders a clean empty state)',
+    tag: 'dashboard',
+    security: 'public',
+    response: C.dashListResponseSchema,
+    handler: async () => ({ ok: true as const, data: { items: [] } }),
+  },
+  {
+    method: 'get',
+    path: '/leaderboard',
+    operationId: 'dashLeaderboard',
+    summary: 'sales = settled escrows per seller (real); xp/ref rails ship with the quest engine',
+    tag: 'dashboard',
+    security: 'public',
+    query: C.leaderboardQuerySchema,
+    response: C.leaderboardResponseSchema,
+    handler: async ({ store }, { query }) => {
+      const q = query as unknown as { type: 'xp' | 'sales' | 'ref'; limit: number };
+      if (q.type !== 'sales') return { ok: true as const, data: { items: [] } };
+      const grouped = await store.prisma.escrow.groupBy({
+        by: ['sellerId'],
+        where: { status: 'RELEASED' },
+        _count: { _all: true },
+      });
+      const top = grouped
+        .map((g) => ({ sellerId: g.sellerId, sales: g._count._all }))
+        .sort((a, b) => b.sales - a.sales)
+        .slice(0, q.limit);
+      const sellers = top.length
+        ? await store.prisma.account.findMany({ where: { id: { in: top.map((t) => t.sellerId) } }, select: { id: true, label: true } })
+        : [];
+      const labelOf = new Map(sellers.map((s) => [s.id, s.label]));
+      return {
+        ok: true as const,
+        data: {
+          items: top.map((t, i) => ({
+            rank: i + 1,
+            name: labelOf.get(t.sellerId) ?? t.sellerId,
+            username: null,
+            xp: 0,
+            sales: t.sales,
+            refs: 0,
+          })),
+        },
+      };
+    },
+  },
+  {
+    method: 'get',
+    path: '/approvals',
+    operationId: 'listDashApprovals',
+    summary: 'HITL queue in dashboard shapes (risk level derives from the charter threshold)',
+    tag: 'dashboard',
+    security: 'admin',
+    query: C.approvalListQuerySchema,
+    response: C.approvalListResponseSchema,
+    handler: async ({ store }, { query }) => {
+      const wire = APPROVAL_STATUS_WIRE[query.status ?? 'pending'];
+      const rows = await store.listHitl(wire as C.HitlStatusWire | undefined);
+      return {
+        ok: true as const,
+        data: {
+          items: rows.map((r) => ({
+            id: r.id,
+            type: r.kind,
+            riskLevel: riskLevel(r.amount),
+            summary: `Release ${r.amount} Đ — escrow ${r.escrowId}`,
+            note: r.note,
+            amount: r.amount,
+            status: r.status.toLowerCase(),
+            createdAt: r.createdAt.toISOString(),
+            expiresAt: r.expiresAt.toISOString(),
+          })),
+        },
+      };
+    },
+  },
+  {
+    method: 'post',
+    path: '/approvals/{id}/decide',
+    operationId: 'dashApprovalDecision',
+    summary: 'Approve settles the escrow in the same transaction; reject locks it for arbitration',
+    tag: 'dashboard',
+    security: 'admin',
+    params: z.object({ id: C.idSchema }),
+    body: C.approvalDecisionRequestSchema,
+    response: C.approvalDecisionResponseSchema,
+    handler: async ({ store }, { params, body }) => {
+      const input = body as C.ApprovalDecisionRequest;
+      const row = await store.getHitl(params.id!);
+      if (row === null) {
+        throw new DomainFailure({ code: 'HITL_NOT_FOUND', message: `HITL request ${params.id} does not exist` });
+      }
+      const decided = await store.decideHitl({
+        requestId: row.id,
+        decision: input.approve ? 'APPROVED' : 'REJECTED',
+        decidedBy: 'dashboard',
+        ...(input.note !== undefined ? { decisionNote: input.note } : {}),
+        execute: input.approve
+          ? (ledger, registry) =>
+              D.releaseEscrow(ledger, registry, {
+                escrowId: row.escrowId,
+                approvedByAdmin: true,
+                idempotencyKey: `hitl:${row.id}:approve`,
+              })
+          : () => {
+              // Unreachable for REJECTED — decideHitl only calls execute on APPROVED.
+              throw new HttpFailure(500, 'INTERNAL', 'REJECTED decision must not execute a settlement.');
+            },
+      });
+      return {
+        ok: true as const,
+        data: {
+          id: decided.request.id,
+          status: decided.request.status.toLowerCase(),
+          escrowId: row.escrowId,
+          txId: decided.tx?.id ?? null,
+        },
+      };
+    },
+  },
+  {
+    method: 'get',
+    path: '/settings',
+    operationId: 'listDashSettings',
+    summary: 'Runtime settings — empty until the KV model ships (brand lives in env today)',
+    tag: 'dashboard',
+    security: 'admin',
+    response: C.settingsListResponseSchema,
+    handler: async () => ({ ok: true as const, data: { items: [] } }),
+  },
+  {
+    method: 'put',
+    path: '/settings',
+    operationId: 'putDashSetting',
+    summary: '501 until the KV model ships — honest refusal beats a silent no-op',
+    tag: 'dashboard',
+    security: 'admin',
+    body: C.settingsPutRequestSchema,
+    response: C.settingsListResponseSchema,
+    handler: async () => {
+      throw new HttpFailure(501, 'NOT_IMPLEMENTED', 'Settings persistence is not wired yet — branding comes from BRAND_NAME / BRAND_TAGLINE env.');
+    },
+  },
+  {
+    method: 'get',
+    path: '/security',
+    operationId: 'dashSecurity',
+    summary: 'Live defense-in-depth layers (real config flags) + the audit trail tail',
+    tag: 'dashboard',
+    security: 'admin',
+    response: C.securityResponseSchema,
+    handler: async ({ store, config }) => {
+      const audit = await store.prisma.auditLog.findMany({ orderBy: { at: 'desc' }, take: 15 });
+      return {
+        ok: true as const,
+        data: {
+          layers: [
+            { id: 'L01', name: 'Double-entry ledger', description: 'Balances are derived from postings — the postings table is the single source of truth', active: true },
+            { id: 'L02', name: 'Idempotent commands', description: 'Replayed commands never move money twice', active: true },
+            { id: 'L03', name: 'Escrow state machine', description: 'Fund → deliver → release, with disputes, refunds and TTL expiry', active: true },
+            { id: 'L04', name: 'HITL threshold gate', description: `Releases ≥ ${D.CHARTER.hitlThresholdDin} Đ require human approval`, active: true },
+            { id: 'L05', name: 'Admin key (X-KIA-Key)', description: 'Admin endpoints fail closed without KIA_ADMIN_KEY', active: config.adminKey !== undefined },
+            { id: 'L06', name: 'Rate limiting', description: `${config.rateLimitPerMin} requests/minute per client (admin calls share one bucket)`, active: true },
+            { id: 'L07', name: 'Audit log', description: 'Money-adjacent actions land in the audit trail', active: true },
+            { id: 'L08', name: 'Telegram identity (initData HMAC)', description: 'Public AI callers must prove a Telegram identity; staff role is key-gated', active: config.botToken !== undefined },
+            { id: 'L09', name: 'AI daily token cap', description: 'Per-user budget stops runaway agent spend', active: config.aiProviders !== undefined },
+            { id: 'L10', name: 'Boot backups', description: 'VACUUM INTO snapshots at boot with pruned retention', active: true },
+            { id: 'L11', name: 'Fail-closed config', description: 'Missing DATABASE_URL refuses to boot; partial LLM env refuses to boot', active: true },
+            { id: 'L12', name: 'TLS at the edge', description: 'HTTPS termination and DDoS shielding by the platform edge', active: true },
+          ],
+          audit: audit.map((a) => ({
+            id: a.id,
+            actor: a.actor,
+            action: a.action,
+            target: a.target,
+            status: 'ok',
+            createdAt: a.at.toISOString(),
+          })),
+        },
+      };
+    },
+  },
 ];
 
 // ── Phase 5 helpers ──────────────────────────────────────────────────────────
@@ -872,5 +1419,96 @@ function hitlToView(row: {
     decidedBy: row.decidedBy,
     decidedAt: row.decidedAt !== null ? row.decidedAt.toISOString() : null,
     decisionNote: row.decisionNote,
+  };
+}
+
+// ── Command-center helpers ───────────────────────────────────────────────────
+
+/** Real package version — the footer and settings page render it verbatim. */
+export function serverVersion(): string {
+  try {
+    const raw = readFileSync(new URL('../package.json', import.meta.url), 'utf8');
+    const pkg = JSON.parse(raw) as { version?: string };
+    return pkg.version ?? 'dev';
+  } catch {
+    return 'dev';
+  }
+}
+
+/** Escrow status → the dashboard's chip vocabulary. */
+const DASH_STATUS: Record<string, string> = {
+  CREATED: 'pending',
+  FUNDED: 'paid',
+  DELIVERED: 'delivered',
+  RELEASED: 'delivered',
+  DISPUTED: 'pending',
+  REFUNDED: 'refunded',
+  CANCELLED: 'cancelled',
+  EXPIRED: 'cancelled',
+};
+
+/** Dashboard order filter → the escrow statuses it means on the wire. */
+const ORDER_STATUS_FILTER: Record<string, readonly string[] | undefined> = {
+  all: undefined,
+  pending: ['CREATED', 'DISPUTED'],
+  paid: ['FUNDED'],
+  delivered: ['DELIVERED', 'RELEASED'],
+  refunded: ['REFUNDED'],
+  cancelled: ['CANCELLED', 'EXPIRED'],
+};
+
+const APPROVAL_STATUS_WIRE: Record<string, string | undefined> = {
+  pending: 'PENDING',
+  approved: 'APPROVED',
+  rejected: 'REJECTED',
+  expired: 'EXPIRED',
+  all: undefined,
+};
+
+function riskLevel(amount: number): 'low' | 'medium' | 'high' {
+  if (amount >= D.CHARTER.hitlThresholdDin) return 'high';
+  if (amount >= 10_000) return 'medium';
+  return 'low';
+}
+
+function utcDay(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+/** 14 UTC calendar days ending today, zero-filled — the chart draws exactly this. */
+function emptySeries(): { date: string; revenue: number; orders: number }[] {
+  const out: { date: string; revenue: number; orders: number }[] = [];
+  for (let i = 13; i >= 0; i--) {
+    out.push({ date: utcDay(new Date(Date.now() - i * 24 * 3_600_000)), revenue: 0, orders: 0 });
+  }
+  return out;
+}
+
+interface ProductRowLike {
+  id: string;
+  sellerId: string;
+  title: string;
+  description: string;
+  priceDin: number;
+  category: string | null;
+  active: boolean;
+  createdAt: Date;
+}
+
+/** Product row → the dashboard's card shape (stock/stars/featured are view-only). */
+function productView(r: ProductRowLike, salesCount?: number): C.ProductView {
+  return {
+    id: r.id,
+    sellerId: r.sellerId,
+    title: r.title,
+    description: r.description,
+    category: r.category ?? 'general',
+    priceStars: 0,
+    priceCredits: r.priceDin,
+    stock: -1,
+    salesCount: salesCount ?? 0,
+    featured: false,
+    status: r.active ? 'active' : 'archived',
+    createdAt: r.createdAt.toISOString(),
   };
 }

@@ -18,6 +18,9 @@ const envSchema = z.object({
   V3_DEV_AUTH: z.preprocess(emptyAsUndefined, z.string().optional()),
   PORT: z.coerce.number().int().min(1).max(65535).default(8787),
   RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).default(240),
+  // White-label branding for the command center shell (GET /api/v1/brand).
+  BRAND_NAME: z.preprocess(emptyAsUndefined, z.string().min(1).max(60).optional()),
+  BRAND_TAGLINE: z.preprocess(emptyAsUndefined, z.string().max(160).optional()),
 });
 
 export interface Config {
@@ -33,6 +36,9 @@ export interface Config {
   readonly aiProviders?: readonly { readonly name: string; readonly config: LlmConfig }[];
   /** Per-user daily AI token cap (default 120,000). */
   readonly aiDailyTokenCap: number;
+  /** Command-center shell branding (GET /brand) — env-driven white-label. */
+  readonly brandName?: string;
+  readonly brandTagline?: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -41,7 +47,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     const details = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
     throw new Error(`Invalid environment — ${details}`);
   }
-  const { KIA_ADMIN_KEY, TELEGRAM_BOT_TOKEN, V3_DEV_AUTH, PORT, RATE_LIMIT_PER_MIN } = parsed.data;
+  const { KIA_ADMIN_KEY, TELEGRAM_BOT_TOKEN, V3_DEV_AUTH, PORT, RATE_LIMIT_PER_MIN, BRAND_NAME, BRAND_TAGLINE } = parsed.data;
   const devAuth = V3_DEV_AUTH === '1' && !TELEGRAM_BOT_TOKEN;
   // Fail-closed (ADR-006 + ADR-008): an EMPTY LLM env means AI disabled
   // (legitimate deployment — /ai/* answers 503); a PARTIAL configuration
@@ -61,5 +67,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     ...(primary !== undefined ? { llm: primary.config } : {}),
     ...(gateway.providers.length > 0 ? { aiProviders: gateway.providers } : {}),
     aiDailyTokenCap: aiOptions.dailyTokenCap ?? 120_000,
+    brandName: BRAND_NAME ?? 'XDrop Marketplace',
+    brandTagline: BRAND_TAGLINE ?? 'Market, wallets & economy — inside Telegram',
   };
 }

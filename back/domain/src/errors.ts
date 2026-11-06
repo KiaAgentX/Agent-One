@@ -24,7 +24,8 @@ export type DomainErrorCode =
   | 'HITL_NOT_FOUND'
   | 'HITL_NOT_REQUIRED'
   | 'HITL_ALREADY_DECIDED'
-  | 'HITL_EXPIRED';
+  | 'HITL_EXPIRED'
+  | 'PRODUCT_NOT_FOUND';
 
 export interface DomainError {
   readonly code: DomainErrorCode;

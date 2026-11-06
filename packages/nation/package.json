@@ -1,6 +1,6 @@
 {
   "name": "@dropagentx/nation",
-  "version": "4.4.2",
+  "version": "4.4.3",
   "description": "Digital Nation economy — the monetary charter as code (charter.ts IDENTICAL from AgentX), read-only indicators service (EVOLVED: db injected) and the public transparency API (EVOLVED: Express router → Fastify plugin, identical endpoints). Zero-loss merge of AgentX src/nation.",
   "private": true,
   "type": "module",

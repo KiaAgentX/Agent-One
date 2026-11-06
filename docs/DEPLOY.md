@@ -33,6 +33,14 @@ vars together, or none).
    from its origin automatically — which arms the bot's web_app buttons
    («اپ تلگرام»); set it explicitly only for a custom domain.
 
+> **Command center:** the public site (`front/public-site`) at `/` is the
+> XDrop Marketplace command center. Its API lives under `/api/v1`
+> (`/overview`, `/products`, `/orders`, `/wallets`, `/leaderboard`,
+> `/approvals`, `/security`, `/brand`, …). Owner actions unlock with the
+> **`KIA_ADMIN_KEY`** pasted into the Unlock field (sent as `X-KIA-Key`);
+> without the key the shell renders read-only views. Optional env:
+> `BRAND_NAME` / `BRAND_TAGLINE` white-label the shell.
+
 > **Fresh-volume note:** on first boot the single-service runs `prisma db push
 > --skip-generate` against the mounted volume (idempotent — creates the schema
 > on an empty volume, syncs additive drift, refuses destructive changes).

@@ -11,14 +11,14 @@ import { PrismaClient } from '@prisma/client';
 import * as C from '@dropagentx/contracts';
 import { loadConfig, type Config } from './config.js';
 import { V3Store } from './persistence.js';
-import { API_ROUTES, type RouteContext } from './api.js';
+import { API_ROUTES, serverVersion, type RouteContext } from './api.js';
 import { requireAdmin, rateLimit } from './guards.js';
 import { toHttpError, ValidationFailure } from './errors.js';
 import { buildAiGateway, type AssembledAi } from './ai.js';
 
 export const OPENAPI_INFO: C.OpenApiInfo = {
   title: 'DropAgentX v3 — Unified Core API',
-  version: '1.0.0',
+  version: serverVersion(),
   description:
     'Admin service API over the pure domain core: integer money, immutable double-entry ledger, escrow state machine, 10-article monetary charter. Errors follow { error: { code, message } } — codes are additive.',
 };
@@ -33,6 +33,14 @@ export interface BuiltApp {
 }
 
 export async function buildApp(config: Config, prisma?: PrismaClient): Promise<BuiltApp> {
+  // Normalization: callers that hand-build a Config (tests) may omit the
+  // newer fields — the env loader owns the real defaults (config.ts).
+  const cfg: Config = {
+    ...config,
+    aiDailyTokenCap: config.aiDailyTokenCap ?? 120_000,
+    brandName: config.brandName ?? 'XDrop Marketplace',
+    brandTagline: config.brandTagline ?? 'Market, wallets & economy — inside Telegram',
+  };
   const app = Fastify({
     logger: false,
     // Behind Railway's proxy the TCP peer is the proxy itself — without this,
@@ -50,11 +58,11 @@ export async function buildApp(config: Config, prisma?: PrismaClient): Promise<B
         store,
         prisma: prismaClient,
         providers: config.aiProviders,
-        dailyTokenCap: config.aiDailyTokenCap,
+        dailyTokenCap: cfg.aiDailyTokenCap,
       })
     : undefined;
 
-  const ctx: RouteContext = { store, config, ...(ai !== undefined ? { ai } : {}) };
+  const ctx: RouteContext = { store, config: cfg, ...(ai !== undefined ? { ai } : {}) };
 
   // Meta endpoints (not part of the business registry).
   app.get('/api/v1/openapi.json', async () => C.buildOpenApiDoc(API_ROUTES, OPENAPI_INFO));
@@ -111,11 +119,11 @@ export async function buildApp(config: Config, prisma?: PrismaClient): Promise<B
   // Business endpoints — one loop, one source of truth.
   for (const route of API_ROUTES) {
     app.route({
-      method: route.method.toUpperCase() as 'GET' | 'POST',
+      method: route.method.toUpperCase() as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
       url: `/api/v1${C.toFastifyPath(route.path)}`,
       preHandler: [
-        rateLimit(config),
-        ...(route.security === 'admin' ? [requireAdmin(config)] : []),
+        rateLimit(cfg),
+        ...(route.security === 'admin' ? [requireAdmin(cfg)] : []),
       ],
       handler: async (req, reply) => {
         try {
@@ -155,7 +163,7 @@ export async function buildApp(config: Config, prisma?: PrismaClient): Promise<B
     });
   }
 
-  return { app, store, config, prisma: prismaClient, ...(ai !== undefined ? { ai } : {}) };
+  return { app, store, config: cfg, prisma: prismaClient, ...(ai !== undefined ? { ai } : {}) };
 }
 
 function validation(issues: readonly { path: PropertyKey[]; message: string }[]): ValidationFailure {

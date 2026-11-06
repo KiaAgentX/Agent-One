@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 
-export type HttpMethod = 'get' | 'post';
+export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
 export type Security = 'admin' | 'public';
 
 export interface ApiRouteDef {

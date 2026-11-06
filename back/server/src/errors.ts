@@ -30,7 +30,7 @@ export class HttpFailure extends Error {
   }
 }
 
-const NOT_FOUND_CODES = new Set(['ESCROW_NOT_FOUND', 'UNKNOWN_ACCOUNT', 'HITL_NOT_FOUND']);
+const NOT_FOUND_CODES = new Set(['ESCROW_NOT_FOUND', 'UNKNOWN_ACCOUNT', 'HITL_NOT_FOUND', 'PRODUCT_NOT_FOUND']);
 
 const UNPROCESSABLE_CODES = new Set([
   'INVALID_TRANSITION',
