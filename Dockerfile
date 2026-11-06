@@ -76,6 +76,14 @@ COPY --from=deps /app /app
 # excludes db/).
 COPY . .
 RUN mkdir -p /app/db && chown -R node:node /app/db
+# Zero-config boot: the image itself satisfies the fail-closed DATABASE_URL
+# gate with the canonical volume path, so a bare `docker run` (or a platform
+# with no env vars set) boots an API-only SQLite service instead of
+# crash-looping in config validation. Platform-set env vars always win over
+# image ENV — pointing DATABASE_URL at a managed Postgres needs no rebuild.
+# The single-service boot gate then finds file: and runs `prisma db push`
+# against this path on the (possibly empty) mounted volume.
+ENV DATABASE_URL=file:/app/db/v3.db
 USER node
 EXPOSE 8787
 # SQLite lives on the mounted volume; the single-service entry boots server + bot.
