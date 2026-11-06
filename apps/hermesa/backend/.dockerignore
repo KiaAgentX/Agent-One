@@ -1,0 +1,22 @@
+# Docker build context — هرچی اینجا نباشد وارد ایمیج نمی‌شود
+venv/
+.venv/
+data/
+uploads/
+__pycache__/
+*.pyc
+*_test.py
+memory_smoke_test.py
+smoke_test.py
+seed_live.py
+.env
+.env.*
+!.env.example
+.git/
+.gitignore
+.dockerignore
+# مستندات لازم نیست داخل ایمیج runtime باشد (کاهش حجم build context)
+*.md
+docs/
+tests/
+CHANGELOG*.md

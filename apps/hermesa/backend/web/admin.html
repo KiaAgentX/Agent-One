@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title> DropAgentX — پنل ادمین مدیریت</title>
+<meta name="description" content="پنل ادمین DropAgentX — مدیریت کاربران، محصولات و آنالیتیکس">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app/css/design-system.css">
+<style>
+  .sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 280px;
+    background: var(--color-bg-elevated);
+    border-left: 1px solid var(--color-border);
+    z-index: var(--z-fixed);
+    transition: transform var(--duration-normal) var(--ease-standard);
+  }
+  .sidebar-header {
+    padding: var(--space-6);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .sidebar-nav {
+    padding: var(--space-4);
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    border-radius: var(--radius-xl);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    transition: all var(--duration-fast);
+  }
+  .nav-item:hover {
+    background: var(--color-bg-input);
+    color: var(--color-text);
+  }
+  .nav-item.active {
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    border-right: 3px solid var(--color-primary);
+  }
+  .main-content {
+    margin-right: 280px;
+    padding: var(--space-6);
+  }
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-4);
+    margin-bottom: var(--space-8);
+  }
+  .stat-card {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-2xl);
+    padding: var(--space-6);
+  }
+  .stat-label {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-2);
+  }
+  .stat-value {
+    font-family: var(--font-mono);
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--color-text);
+  }
+  .stat-change {
+    font-size: var(--text-xs);
+    margin-top: var(--space-2);
+  }
+  .change-positive { color: var(--color-success); }
+  .change-neutral { color: var(--color-text-secondary); }
+  .change-negative { color: var(--color-danger); }
+  .table-container {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-2xl);
+    overflow: hidden;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th {
+    text-align: right;
+    padding: var(--space-4);
+    background: var(--color-bg-input);
+    color: var(--color-text-secondary);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--color-border);
+  }
+  td {
+    padding: var(--space-4);
+    color: var(--color-text);
+    border-bottom: 1px solid var(--color-border);
+    font-size: var(--text-sm);
+  }
+  tr:hover td {
+    background: rgba(255,255,255,0.02);
+  }
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: 600;
+  }
+  .status-active { background: rgba(34, 197, 94, 0.15); color: var(--color-success); }
+  .status-pending { background: rgba(245, 158, 11, 0.15); color: var(--color-warning); }
+  .status-inactive { background: rgba(100, 116, 139, 0.15); color: var(--color-text-muted); }
+  .btn-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    border: none;
+    background: var(--color-bg-input);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--duration-fast);
+  }
+  .btn-icon:hover {
+    background: var(--color-border-hover);
+    color: var(--color-text);
+  }
+  @media (max-width: 1024px) {
+    .sidebar { transform: translateX(100%); }
+    .main-content { margin-right: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="nav-logo" style="font-size: var(--text-lg);">DropAgentX</div>
+    <p class="text-muted text-xs mt-2">پنل مدیریت</p>
+  </div>
+  <div class="sidebar-nav">
+    <a href="#" class="nav-item active">
+      <span>📊</span> داشبورد
+    </a>
+    <a href="#" class="nav-item" onclick="location.href='/links'">
+      <span>👥</span> کاربران
+    </a>
+    <a href="#" class="nav-item" onclick="location.href='/links'">
+      <span>📦</span> محصولات
+    </a>
+    <a href="#" class="nav-item" onclick="location.href='/links'">
+      <span>💰</span> تراکنش‌ها
+    </a>
+    <a href="#" class="nav-item" onclick="location.href='/links'">
+      <span>🎫</span> تیکت‌ها
+    </a>
+    <a href="#" class="nav-item" onclick="location.href='/links'">
+      <span>⚙️</span> تنظیمات
+    </a>
+  </div>
+</div>
+
+<div class="main-content">
+  <!-- Header -->
+  <div class="flex justify-between items-center mb-8 fade-in">
+    <div>
+      <h1>داشبورد مدیریت</h1>
+      <p class="text-muted">نظارت بر عملکرد مارکت‌پلیس در لحظه</p>
+    </div>
+    <div class="flex gap-3">
+      <button class="btn btn-ghost btn-icon" title="بازخوانی">⟳</button>
+      <button class="btn btn-primary btn-sm">خروجی CSV</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row slide-up">
+    <div class="stat-card">
+      <div class="stat-label">کل کاربران</div>
+      <div class="stat-value">12,450</div>
+      <div class="stat-change change-positive">▲ 12% این ماه</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">فروش کل</div>
+      <div class="stat-value">45.2M تومان</div>
+      <div class="stat-change change-positive">▲ 8% این ماه</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">سفارشات فعال</div>
+      <div class="stat-value">892</div>
+      <div class="stat-change change-neutral">▲ 3% این هفته</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">دقت هوش مصنوعی</div>
+      <div class="stat-value">98%</div>
+      <div class="stat-change change-positive">▲ 2% دقت</div>
+    </div>
+  </div>
+
+  <!-- Recent Activity -->
+  <div class="grid grid-cols-2">
+    <div class="col-span-2 slide-up" style="animation-delay: 0.1s">
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>کاربر</th>
+              <th>آخرین فعالیت</th>
+              <th>مبلغ خرید</th>
+              <th>وضعیت</th>
+              <th>عملیات</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>علی احمدی <span class="badge badge-primary" style="font-size: var(--text-xs); margin-left: var(--space-2);">VIP</span></td>
+              <td>2 دقیقه قبل</td>
+              <td>450,000 تومان</td>
+              <td><span class="status-badge status-active">فعال</span></td>
+              <td><button class="btn-icon">👁</button></td>
+            </tr>
+            <tr>
+              <td>سارا محمدی</td>
+              <td>15 دقیقه قبل</td>
+              <td>120,000 تومان</td>
+              <td><span class="status-badge status-active">فعال</span></td>
+              <td><button class="btn-icon">👁</button></td>
+            </tr>
+            <tr>
+              <td>رضا کریمی</td>
+              <td>1 ساعت قبل</td>
+              <td>0 تومان</td>
+              <td><span class="status-badge status-pending">در انتظار</span></td>
+              <td><button class="btn-icon">👁</button></td>
+            </tr>
+            <tr>
+              <td>فاطمه حسنی</td>
+              <td>3 ساعت قبل</td>
+              <td>300,000 تومان</td>
+              <td><span class="status-badge status-active">فعال</span></td>
+              <td><button class="btn-icon">👁</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

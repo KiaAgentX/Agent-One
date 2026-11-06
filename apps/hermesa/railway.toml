@@ -1,0 +1,16 @@
+[build]
+builder = "docker"
+
+[deploy]
+startCommand = "python run.py"
+healthcheckPath = "/healthz"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+[[deploy.services]]
+name = "dropagentx-web"
+healthcheckPath = "/healthz"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10

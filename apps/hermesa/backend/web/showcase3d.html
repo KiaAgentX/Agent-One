@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title> DropAgentX — نمایش ۳D محصولات</title>
+<meta name="description" content="نمایش ۳D محصولات DropAgentX — تجربه بصری مدرن">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app/css/design-system.css">
+<style>
+  .showcase-hero {
+    position: relative;
+    height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: radial-gradient(circle at center, #1E1B4B 0%, #020617 100%);
+  }
+  .showcase-hero::before {
+    content: '';
+    position: absolute;
+    top: -20%;
+    right: -20%;
+    width: 140%;
+    height: 140%;
+    background: conic-gradient(from 0deg, transparent, rgba(124, 58, 237, 0.15), transparent);
+    animation: rotate 20s linear infinite;
+    z-index: 0;
+  }
+  @keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .showcase-content {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    max-width: 800px;
+    padding: 0 var(--space-4);
+  }
+  .showcase-3d-mock {
+    width: 300px;
+    height: 300px;
+    background: linear-gradient(135deg, #7C3AED, #4F46E5);
+    border-radius: var(--radius-2xl);
+    margin: 0 auto var(--space-8);
+    position: relative;
+    box-shadow: var(--shadow-glow);
+    animation: float 6s ease-in-out infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 5rem;
+    color: #fff;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(5deg); }
+  }
+  .features-showcase {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-6);
+    margin-bottom: var(--space-16);
+  }
+  .feature-item {
+    text-align: center;
+    padding: var(--space-6);
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-2xl);
+    transition: all var(--duration-normal);
+  }
+  .feature-item:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-4px);
+  }
+  .feature-icon {
+    font-size: 2.5rem;
+    margin-bottom: var(--space-4);
+    display: block;
+  }
+  .cta-floating {
+    position: fixed;
+    right: var(--space-6);
+    bottom: var(--space-6);
+    z-index: var(--z-fixed);
+  }
+  @media (max-width: 1024px) {
+    .features-showcase { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .features-showcase { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-container">
+    <a href="landing.html" class="nav-logo">DropAgentX</a>
+    <div class="nav-links">
+      <a href="#" class="nav-link">خانه</a>
+      <a href="#" class="nav-link">محصولات</a>
+      <a href="login.html" class="btn btn-primary btn-sm">ورود</a>
+    </div>
+  </div>
+</nav>
+
+<section class="showcase-hero">
+  <div class="showcase-content slide-up">
+    <div class="showcase-3d-mock">📦</div>
+    <h1 class="fade-in" style="animation-delay: 0.2s">تجربه بصری ۳D</h1>
+    <p class="text-lg text-muted fade-in" style="animation-delay: 0.4s;">
+      محصولات شما با نمایش سه‌بعدی و انیمیشن‌های شирین، جذاب‌تر و قابل درک‌تر می‌شوند.
+    </p>
+    <div class="hero-actions fade-in" style="animation-delay: 0.6s">
+      <a href="#" class="btn btn-primary btn-lg">آن را امتحان کنید</a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="text-center mb-12 fade-in">
+      <h2>چرا نمایش ۳D مهم است؟</h2>
+      <p class="text-muted">افزایش نرخ تبدیل تا ۴۰٪ با تجربه بصری مدرن</p>
+    </div>
+
+    <div class="features-showcase stagger">
+      <div class="feature-item slide-up">
+        <span class="feature-icon">🎯</span>
+        <h3>دیدن از هر زاویه</span>
+        <p class="text-muted text-sm">کاربران می‌توانند محصول را از همه زوایا ببینند قبل از خرید.</p>
+      </div>
+      <div class="feature-item slide-up" style="animation-delay: 0.1s">
+        <span class="feature-icon">⚡</span>
+        <h3>بارگذاری سریع</h3>
+        <p class="text-muted text-sm">بهینه برای موبایل و تلگرام.</p>
+      </div>
+      <div class="feature-item slide-up" style="animation-delay: 0.2s">
+        <span class="feature-icon">💎</span>
+        <h3>ظاهر ausgezeichnet</h3>
+        <p class="text-muted text-sm">طراحی سطح Silicon Valley برای برند شما.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<button class="btn cta-floating btn-secondary" style="border: 1px solid var(--color-border); color: var(--color-text-secondary);">
+  🔙 به صفحه اصلی
+</button>
+
+</body>
+</html>

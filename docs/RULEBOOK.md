@@ -139,7 +139,7 @@ UI فقط داشبورد ادمین نیست. پروژهٔ واحد **سه سط�
 | **۱** | دفترچه قانون + نقشهٔ ساختار | ✅ همین سند (v1.1 با قوانین UI) |
 | **۲** | ساخت اسکلت واحد از Bot + اتصال ۸ ریموت + اسکلت webapp | ✅ **Done** — مخزن `unified/` ساخته شد؛ ۶ ریموت fetch شد (`git log` همهٔ خطوط در دسترس: Bot، v3، AgentX، DropAgentX، HermesA، portfolio)؛ webapp با رجیستری ۳۰ صفحه + typecheck/build سبز؛ همهٔ تست‌های موجود سبز (server 43، dashboard 35، bot) |
 | **۳** | ادغام خطوط نسلی: انتقال nation از AgentX + رجیستری ۲۸ فرمان متصل به orchestrator | ✅ **Done** — `packages/nation` با charter IDENTICAL (diff صفر) + سرویس/روت EVOLVED (Fastify، همان ۳ مسیر)؛ ۱۷ تست nation سبز. رجیستری ۲۸ فرمان در `back/bot/src/commands/registry.ts` متصل به orchestrator (منوی دسته‌بندی + شناسنامهٔ استاندارد + دکمهٔ WebApp)؛ ۱۴ تست جدید + ۲۲۶ تست کل سبز |
-| **۴** | ورود یکتاها: HermesA → apps، zenovix → packages/widget، AGI ops/charter → docs و legacy | هیچ پوشه‌ای جا نماند |
+| **۴** | ورود یکتاها: HermesA → apps، zenovix → packages/widget، AGI ops/charter → docs و legacy | ✅ **Done** — `apps/hermesa` (۷.۵M، IDENTICAL، diff صفر، npm مستقل) · `packages/widget` (zenovix v3.2، IDENTICAL) · `legacy/agi-main/` (کل اسنپ‌شات ۴۵۶ فایل، IDENTICAL) · `docs/charter/` (charter 2.1.0 استخراج شد) · نقشهٔ کامل در `legacy/README.md` — هیچ پوشه‌ای جا نماند |
 | **۵** | **UI کامل:** ۳۰ صفحهٔ webapp + پورت صفحات ops به dashboard + PWA از AgentX | هر ۳ سطح UI طبق قانون ۹ کامل |
 | **۶** | ممیزی صفر-اتلاف: اسکریپت مانیفست روی هر ۸ مخزن | گزارش پوشش = ۱۰۰٪ |
 | **۷** | build/test نهایی + بسته‌بندی تحویل | همهٔ تست‌ها سبز + مخزن واحد آماده |

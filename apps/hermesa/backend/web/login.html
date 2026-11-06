@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title> DropAgentX — ورود به پنل مدیریت</title>
+<meta name="description" content="ورود به پنل مدیریت DropAgentX">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app/css/design-system.css">
+<style>
+  .login-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--grad-bg);
+  }
+  .login-card {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-2xl);
+    padding: var(--space-10);
+    width: 100%;
+    max-width: 420px;
+    box-shadow: var(--shadow-xl);
+    position: relative;
+    overflow: hidden;
+  }
+  .login-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 3px;
+    background: var(--grad-primary);
+  }
+  .login-brand {
+    text-align: center;
+    margin-bottom: var(--space-8);
+  }
+  .login-brand .nav-logo {
+    font-size: var(--text-2xl);
+    margin-bottom: var(--space-2);
+  }
+  .login-brand p {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+  .form-group {
+    margin-bottom: var(--space-4);
+  }
+  .form-label {
+    display: block;
+    margin-bottom: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+  .input-wrapper {
+    position: relative;
+  }
+  .input-icon {
+    position: absolute;
+    right: var(--space-3);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-muted);
+    font-size: var(--text-lg);
+  }
+  .form-input {
+    padding-right: var(--space-10);
+  }
+  .login-footer {
+    margin-top: var(--space-6);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+    text-align: center;
+  }
+  .divider-text {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin: var(--space-6) 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+  }
+  .divider-text::before, .divider-text::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--color-border);
+  }
+  .btn-telegram {
+    background: #0088cc;
+    color: #fff;
+    border: none;
+    padding: var(--space-3);
+    border-radius: var(--radius-xl);
+    font-weight: 600;
+    width: 100%;
+    cursor: pointer;
+    transition: all var(--duration-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    font-size: var(--text-base);
+  }
+  .btn-telegram:hover {
+    background: #0077b5;
+    transform: translateY(-1px);
+  }
+</style>
+</head>
+<body>
+
+<div class="login-page">
+  <div class="login-card fade-in">
+    <div class="login-brand">
+      <div class="nav-logo">DropAgentX</div>
+      <p>ورود به پنل مدیریت</p>
+    </div>
+
+    <form onsubmit="event.preventDefault(); alert('ورود با موفقیت انجام شد!');">
+      <div class="form-group">
+        <label class="form-label">نام کاربری یا ایمیل</label>
+        <div class="input-wrapper">
+          <span class="input-icon">👤</span>
+          <input type="text" class="form-input" placeholder="نام کاربری خود را وارد کنید">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">رمز عبور</label>
+        <div class="input-wrapper">
+          <span class="input-icon">🔒</span>
+          <input type="password" class="form-input" placeholder="رمز عبور">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">ورود به سیستم</button>
+    </form>
+
+    <div class="divider-text">یا ادامه با</div>
+
+    <button class="btn-telegram">
+      📱 ورود از طریق تلگرام
+    </button>
+
+    <div class="login-footer">
+      <p class="text-muted text-sm">حساب ندارید؟ <a href="#" class="text-primary">ثبت نام کنید</a></p>
+      <p class="text-muted text-sm mt-2"><a href="#" class="text-primary">فراموشی رمز عبور</a></p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

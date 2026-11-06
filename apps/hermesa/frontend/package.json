@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "ui-ux-max-pro": "file:../../ui-ux-max-pro"
+  }
+}

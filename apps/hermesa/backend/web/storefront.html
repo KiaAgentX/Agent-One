@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title> DropAgentX — مارکت‌پلیس هوشمند</title>
+<meta name="description" content="مارکت‌پلیس DropAgentX — خرید و فروش محصولات با کیف‌پول امن">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app/css/design-system.css">
+<style>
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-6);
+  }
+  .product-card {
+    position: relative;
+  }
+  .product-image {
+    width: 100%;
+    height: 200px;
+    background: var(--color-bg-input);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border);
+  }
+  .product-badge {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
+    background: rgba(2, 6, 23, 0.8);
+    backdrop-filter: blur(8px);
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-success);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+  }
+  .product-info {
+    padding: var(--space-4) 0;
+  }
+  .product-title {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    margin-bottom: var(--space-2);
+    color: var(--color-text);
+  }
+  .product-price {
+    font-family: var(--font-mono);
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--color-primary);
+  }
+  .product-category {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .filter-bar {
+    display: flex;
+    gap: var(--space-2);
+    overflow-x: auto;
+    padding-bottom: var(--space-4);
+    margin-bottom: var(--space-6);
+    border-bottom: 1px solid var(--color-border);
+    scrollbar-width: none;
+  }
+  .filter-bar::-webkit-scrollbar { display: none; }
+  .filter-chip {
+    white-space: nowrap;
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-bg-input);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all var(--duration-fast);
+  }
+  .filter-chip.active {
+    background: var(--color-primary);
+    color: #fff;
+    border-color: var(--color-primary);
+  }
+  .filter-chip:hover {
+    border-color: var(--color-border-hover);
+  }
+  .empty-state {
+    text-align: center;
+    padding: var(--space-16) 0;
+    color: var(--color-text-muted);
+  }
+  .empty-state-icon {
+    font-size: 4rem;
+    margin-bottom: var(--space-4);
+    opacity: 0.3;
+  }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-container">
+    <a href="landing.html" class="nav-logo">DropAgentX</a>
+    <div class="nav-links">
+      <a href="#" class="nav-link">خانه</a>
+      <a href="/links" class="nav-link hub-link">دسته‌بندی‌ها</a>
+      <a href="#" class="nav-link">سبد خرید</a>
+      <a href="login.html" class="btn btn-primary btn-sm">ورود</a>
+    </div>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="container">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8 fade-in">
+      <div>
+        <h1>مارکت‌پلیس</h1>
+        <p class="text-muted">هزاران محصول در دسترس شما</p>
+      </div>
+      <div class="flex gap-3">
+        <input type="text" class="form-input" style="width: 280px;" placeholder="جستجو محصولات...">
+        <button class="btn btn-primary">فیلتر</button>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-bar fade-in">
+      <span class="filter-chip active">همه</span>
+      <span class="filter-chip">دستورالعمل</span>
+      <span class="filter-chip">دیجیتال</span>
+      <span class="filter-chip">فیزیکال</span>
+      <span class="filter-chip">سرویس</span>
+      <span class="filter-chip">آموزش</span>
+    </div>
+
+    <!-- Products Grid -->
+    <div class="product-grid">
+      <!-- Product 1 -->
+      <div class="product-card card slide-up">
+        <div class="product-image">🤖</div>
+        <span class="product-badge">جدید</span>
+        <div class="product-info">
+          <div class="product-category">هوش مصنوعی</div>
+          <div class="product-title">ربات هوشمند هرمس</div>
+          <div class="product-price">150,000 تومان</div>
+          <button class="btn btn-primary btn-full mt-3">افزودن به سبد</button>
+        </div>
+      </div>
+      <!-- Product 2 -->
+      <div class="product-card card slide-up" style="animation-delay: 0.1s">
+        <div class="product-image">📱</div>
+        <span class="product-badge">جدید</span>
+        <div class="product-info">
+          <div class="product-category">تلگرام</div>
+          <div class="product-title">ربات مدیریت کانال</div>
+          <div class="product-price">85,000 تومان</div>
+          <button class="btn btn-primary btn-full mt-3">افزودن به سبد</button>
+        </div>
+      </div>
+      <!-- Product 3 -->
+      <div class="product-card card slide-up" style="animation-delay: 0.2s">
+        <div class="product-image">🎨</div>
+        <span class="product-badge">جدید</span>
+        <div class="product-info">
+          <div class="product-category">طراحی</div>
+          <div class="product-title">قالب وردپرس مدرن</div>
+          <div class="product-price">220,000 تومان</div>
+          <button class="btn btn-primary btn-full mt-3">افزودن به سبد</button>
+        </div>
+      </div>
+      <!-- Product 4 -->
+      <div class="product-card card slide-up" style="animation-delay: 0.3s">
+        <div class="product-image">📚</div>
+        <span class="product-badge">جدید</span>
+        <div class="product-info">
+          <div class="product-category">آموزش</div>
+          <div class="product-title">دوره طراحی UI/UX</div>
+          <div class="product-price">350,000 تومان</div>
+          <button class="btn btn-primary btn-full mt-3">افزودن به سبد</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

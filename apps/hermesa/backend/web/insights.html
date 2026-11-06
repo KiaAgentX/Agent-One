@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title> DropAgentX — آنالیتیکس و آمار</title>
+<meta name="description" content="آنالیتیکس DropAgentX — نمودارهای SVG بدون وابستگی">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app/css/design-system.css">
+<style>
+  .insights-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-6);
+    margin-bottom: var(--space-8);
+  }
+  .insight-card {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-2xl);
+    padding: var(--space-6);
+  }
+  .insight-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-4);
+  }
+  .insight-title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+  .insight-value {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--color-text);
+  }
+  .chart-container {
+    width: 100%;
+    height: 200px;
+    margin-top: var(--space-4);
+  }
+  .svg-chart {
+    width: 100%;
+    height: 100%;
+  }
+  .chart-line {
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .chart-area {
+    fill: url(#grad-area);
+  }
+  .chart-grid {
+    stroke: var(--color-border);
+    stroke-width: 1;
+    opacity: 0.3;
+  }
+  .chart-text {
+    fill: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+  .empty-insights {
+    text-align: center;
+    padding: var(--space-16) 0;
+    color: var(--color-text-muted);
+  }
+  @media (max-width: 768px) {
+    .insights-grid { grid-template-columns: 1fr; }
+  }
+</style>
+<svg id="chart-defs" width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="grad-area" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7C3AED" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#7C3AED" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+</svg>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-container">
+    <a href="landing.html" class="nav-logo">DropAgentX</a>
+    <div class="nav-links">
+      <a href="#" class="nav-link">آنالیتیکس</a>
+      <a href="live.html" class="nav-link">زنده</a>
+      <a href="login.html" class="btn btn-primary btn-sm">ورود</a>
+    </div>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="container">
+    <div class="flex justify-between items-center mb-8 fade-in">
+      <div>
+        <h1>آنالیتیکس و آمار</h1>
+        <p class="text-muted">گزارش کامل و بدون وابستگی — همه با SVG رندر شده</p>
+      </div>
+    </div>
+
+    <div class="insights-grid">
+      <div class="insight-card slide-up">
+        <div class="insight-header">
+          <span class="insight-title">تراکنش‌های ۳۰ روزه</span>
+          <span class="insight-value">12,450</span>
+        </div>
+        <div class="chart-container">
+          <svg class="svg-chart" viewBox="0 0 600 200" preserveAspectRatio="none">
+            <polyline class="chart-grid" points="0,180 100,180 200,180 300,180 400,180 500,180 600,180"/>
+            <polyline class="chart-grid" points="0,140 600,140"/>
+            <polyline class="chart-grid" points="0,100 600,100"/>
+            <polyline class="chart-grid" points="0,60 600,60"/>
+            <polyline class="chart-line" points="0,140 80,120 160,100 240,80 320,110 400,70 480,90 560,60 600,50"/>
+            <path d="M0,180 L0,140 L80,120 L160,100 L240,80 L320,110 L400,70 L480,90 L560,60 L600,50 L600,180 Z" class="chart-area"/>
+          </svg>
+        </div>
+      </div>
+      <div class="insight-card slide-up" style="animation-delay: 0.1s">
+        <div class="insight-header">
+          <span class="insight-title">کاربران جدید</span>
+          <span class="insight-value">342</span>
+        </div>
+        <div class="chart-container">
+          <svg class="svg-chart" viewBox="0 0 600 200" preserveAspectRatio="none">
+            <polyline class="chart-grid" points="0,180 100,180 200,180 300,180 400,180 500,180 600,180"/>
+            <polyline class="chart-line" points="0,160 80,140 160,120 240,100 320,80 400,120 480,100 560,80 600,90"/>
+          </svg>
+        </div>
+      </div>
+      <div class="insight-card slide-up" style="animation-delay: 0.2s">
+        <div class="insight-header">
+          <span class="insight-title">درآمد کل (تومان)</span>
+          <span class="insight-value">45.2M</span>
+        </div>
+        <div class="chart-container">
+          <svg class="svg-chart" viewBox="0 0 600 200" preserveAspectRatio="none">
+            <polyline class="chart-grid" points="0,180 600,180"/>
+            <polyline class="chart-line" points="0,100 80,140 160,120 240,160 320,140 400,180 480,160 560,140 600,120"/>
+          </svg>
+        </div>
+      </div>
+      <div class="insight-card slide-up" style="animation-delay: 0.3s">
+        <div class="insight-header">
+          <span class="insight-title">نرخ تبدیل</span>
+          <span class="insight-value">3.4%</span>
+        </div>
+        <div class="chart-container">
+          <svg class="svg-chart" viewBox="0 0 600 200" preserveAspectRatio="none">
+            <polyline class="chart-grid" points="0,180 600,180"/>
+            <polyline class="chart-line" points="0,120 80,100 160,140 240,100 320,120 400,80 480,100 560,60 600,80"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="empty-insights slide-up" style="animation-delay: 0.4s">
+      <div class="empty-state-icon" style="font-size: 4rem; margin-bottom: var(--space-4); opacity: 0.3;">📊</div>
+      <h3>همه آمار در دسترس است</h3>
+      <p>نمودارهای SVG بدون الحاجة به کتابخانه‌های خارجی — سریع، امن و پایدار.</p>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
