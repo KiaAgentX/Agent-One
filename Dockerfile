@@ -81,7 +81,12 @@ RUN pnpm --filter @dropagentx/webapp build
 FROM node:24-slim AS runtime
 ENV NODE_ENV=production \
     COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
-    COREPACK_HOME=/usr/local/share/corepack
+    COREPACK_HOME=/usr/local/share/corepack \
+    PRISMA_HIDE_UPDATE_MESSAGE=1 \
+    CHECKPOINT_DISABLE=1
+# The two Prisma vars silence the "Update available" banner the CLI prints to
+# STDERR on every boot — Railway paints stderr red and a red boot log reads
+# like a crash even when the db push succeeded.
 # pnpm is prepared INTO the image (world-readable corepack cache) so the boot
 # gate (`prisma db push` on a fresh volume) never waits on a runtime download.
 RUN corepack enable pnpm && corepack prepare pnpm@9.15.9 --activate

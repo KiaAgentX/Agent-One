@@ -8,8 +8,8 @@
 
 `front/` → public site, Telegram Mini App, Aurora dashboard · `back/` → server, bot and every domain package
 
-[![Version](https://img.shields.io/badge/version-4.4.0-818CF8?labelColor=0F1B2D)](package.json)
-[![Tests](https://img.shields.io/badge/tests-283%20passing-6EE7B7?labelColor=0F1B2D)](#testing)
+[![Version](https://img.shields.io/badge/version-4.4.1-818CF8?labelColor=0F1B2D)](package.json)
+[![Tests](https://img.shields.io/badge/tests-286%20passing-6EE7B7?labelColor=0F1B2D)](#testing)
 [![TypeScript strict](https://img.shields.io/badge/TypeScript-strict%20%2B%20noUncheckedIndexedAccess-3178C6?labelColor=0F1B2D)](tsconfig.base.json)
 [![Node](https://img.shields.io/badge/node-%E2%89%A522-339933?labelColor=0F1B2D&logo=node.js&logoColor=white)](package.json)
 [![pnpm + turbo](https://img.shields.io/badge/pnpm%209%20%2B%20turbo-monorepo-F9A03C?labelColor=0F1B2D&logo=pnpm&logoColor=white)](pnpm-workspace.yaml)
@@ -91,7 +91,7 @@ Real UI, real data — the stack booted with a seeded demo database (all 8 escro
 ## Project layout
 
 ```
-DropAgentX v3 (v4.4.0)
+DropAgentX v3 (v4.4.1)
 ├── front/                    # everything the user touches
 │   ├── dashboard/            # Aurora UI — React 19 + Vite + Tailwind v4, fa/en (owner console)
 │   ├── webapp/               # Telegram Mini App — 30 pages, mobile-first, RTL-native
@@ -140,7 +140,7 @@ cd agent-one
 pnpm install            # workspace install (9 packages)
 cp .env.example .env    # then fill DATABASE_URL + KIA_ADMIN_KEY (see below)
 
-pnpm test               # 283 tests across 9 packages
+pnpm test               # 286 tests across 9 packages
 pnpm typecheck          # strict, zero errors — 9/9 packages
 
 pnpm -F @dropagentx/server dev        # API on :8787 — docs at /api/v1/docs
@@ -191,9 +191,15 @@ TELEGRAM_WEBHOOK_SECRET=<openssl rand -hex 32>   # armed on both sides automatic
 ```
 
 With the webhook armed, the boot **derives `WEBAPP_BASE_URL` from the webhook origin
-automatically** (`https://<app>.up.railway.app/app/`) — which arms the bot's
+automatically** (`https://<app>.up.railway.app/app/`) — and on Railway even POLLING
+mode derives it from the injected `RAILWAY_PUBLIC_DOMAIN`. That base arms the bot's
 **web_app buttons** (the «اپ تلگرام» button under every command card and in the
 /start menu). Set `WEBAPP_BASE_URL` explicitly only for a custom domain.
+
+Polling-mode deploys are **overlap-safe**: while the old container is still draining,
+a fresh instance can lose the `getUpdates` race with a transient 409 — the bot retries
+with backoff (≈2 min budget) instead of crash-looping, and only a genuinely permanent
+second instance (another machine polling the same token) still fails fast.
 
 At boot the bot calls `setWebhook` itself (secret token included) and the server mounts
 `POST /api/v1/bot/webhook` — log lines `Telegram webhook mounted` / `webhook armed`
@@ -266,7 +272,7 @@ pnpm -F @dropagentx/server exec tsx scripts/genesis-proof.ts --db file:./db/v3.d
 
 ## Testing
 
-283 tests, green on every push — `pnpm typecheck` passes strict on 9/9 packages:
+286 tests, green on every push — `pnpm typecheck` passes strict on 9/9 packages:
 
 | Package | Tests | Covers |
 |---|---:|---|
@@ -274,7 +280,7 @@ pnpm -F @dropagentx/server exec tsx scripts/genesis-proof.ts --db file:./db/v3.d
 | `front/dashboard` | 43 | UI, i18n, formatting, **client↔server roundtrip** |
 | `front/webapp` | 39 | Mini App pages, i18n, money law via the nation package |
 | `back/domain` | 40 | money, ledger closure, escrow machine, charter |
-| `back/bot` | 39 | orchestrator + Telegram glue + webhook replay + web-app buttons |
+| `back/bot` | 42 | orchestrator + Telegram glue + webhook replay + web-app buttons |
 | `back/ai-gateway` | 29 | agents, skills, metering, fallback |
 | `back/llm` | 17 | OpenAI-compatible client contract |
 | `packages/nation` | 17 | nation charter — money law shared with the Mini App |
@@ -294,7 +300,7 @@ the **real typed client** through it — contracts are exercised end-to-end, not
 | 4 | Aurora dashboard — fa/en, RTL, typed client | ✅ |
 | 5 | AI gateway — 6 agents, 16 skills, caps, fallback | ✅ |
 | 6 | Legacy migration (Σ 187,672 Đ proven) + Railway release | ✅ |
-| 7 | Unification — 8 repos → one monorepo, Mini App + public site + nation charter, v4.4.0 on Agent-One | ✅ |
+| 7 | Unification — 8 repos → one monorepo, Mini App + public site + nation charter, v4.4.1 on Agent-One | ✅ |
 
 Details and acceptance criteria per phase: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 The unification lawbook: [`docs/RULEBOOK.md`](docs/RULEBOOK.md).
@@ -317,12 +323,12 @@ Decisions and their consequences: [`docs/adr/`](docs/adr/) (ADR-001 → ADR-008)
 This is the production line for a commercial product, so the rules are strict:
 
 1. **Branch** off `main`, keep commits in [conventional style](https://www.conventionalcommits.org) (`feat:`, `fix:`, `docs:`…).
-2. **Typecheck + tests must stay green** — `pnpm typecheck && pnpm test` before every push (283 tests, 9/9 typecheck).
+2. **Typecheck + tests must stay green** — `pnpm typecheck && pnpm test` before every push (286 tests, 9/9 typecheck).
 3. **Domain changes need a test** for each sacred rule they touch.
 4. **Never commit secrets** — the QC ritual rejects any real-looking key in env templates.
 
 The release ritual (`scripts/package-v3.sh`) refuses to ship unless the tree is
-clean, `git fsck` passes, all 283 tests are green, every workspace version matches
+clean, `git fsck` passes, all 286 tests are green, every workspace version matches
 (all 10 manifests in lockstep), and no secret has leaked into the env template.
 
 ## License

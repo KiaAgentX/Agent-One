@@ -1,6 +1,6 @@
 {
   "name": "@dropagentx/llm",
-  "version": "4.4.0",
+  "version": "4.4.1",
   "description": "OpenAI-compatible LLM client of DropAgentX v3 (ADR-006): one wire contract for every provider via OPENAI_BASE_URL / OPENAI_API_KEY / MODEL. No third-party SDK, Result errors, real timeouts.",
   "type": "module",
   "main": "./src/index.ts",

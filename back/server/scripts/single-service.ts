@@ -24,22 +24,29 @@ if (process.env.DATABASE_URL === undefined || process.env.DATABASE_URL.trim() ==
   process.env.DATABASE_URL = 'file:/app/db/v3.db';
   console.log('[single] DATABASE_URL unset — defaulting to file:/app/db/v3.db');
 }
-// Zero-config Mini App: when the webhook is armed the deployment origin is
-// known — derive the Mini-App base (served at /app by this same process) so
-// the bot's web_app buttons ("اپ تلگرام") arm without a fourth variable.
-// An explicit WEBAPP_BASE_URL always wins; non-https origins are ignored.
+// Zero-config Mini App: derive the Mini-App base (served at /app by this same
+// process) so the bot's web_app buttons ("اپ تلگرام") arm without a fourth
+// variable. Priority: explicit WEBAPP_BASE_URL > webhook origin > Railway's
+// injected RAILWAY_PUBLIC_DOMAIN (works in POLLING mode too, where there is
+// no webhook URL). Non-https origins are ignored; only https arms buttons.
 if (process.env.WEBAPP_BASE_URL === undefined || process.env.WEBAPP_BASE_URL.trim() === '') {
   const hook = process.env.BOT_WEBHOOK_URL;
+  const domain = process.env.RAILWAY_PUBLIC_DOMAIN;
+  let derived: string | null = null;
   if (hook !== undefined && hook.trim() !== '') {
     try {
       const origin = new URL(hook.trim()).origin;
-      if (origin.startsWith('https://')) {
-        process.env.WEBAPP_BASE_URL = `${origin}/app/`;
-        console.log(`[single] WEBAPP_BASE_URL derived from webhook origin → ${process.env.WEBAPP_BASE_URL}`);
-      }
+      if (origin.startsWith('https://')) derived = `${origin}/app/`;
     } catch {
       // non-URL webhook value — config validation will speak up, not us
     }
+  }
+  if (derived === null && domain !== undefined && domain.trim() !== '') {
+    derived = `https://${domain.trim()}/app/`;
+  }
+  if (derived !== null) {
+    process.env.WEBAPP_BASE_URL = derived;
+    console.log(`[single] WEBAPP_BASE_URL derived → ${derived}`);
   }
 }
 const config = loadConfig();
