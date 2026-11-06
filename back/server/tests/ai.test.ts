@@ -11,6 +11,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp, type BuiltApp } from '../src/index.js';
 import { resetRateLimiter } from '../src/guards.js';
+import { makeTestInitData } from '../src/auth.js';
 
 const ADMIN_KEY = 'v3-test-admin-key-0123456789abcdef';
 const ADMIN = { 'x-kia-key': ADMIN_KEY, 'content-type': 'application/json' };
@@ -108,9 +109,13 @@ beforeEach(async () => {
 });
 
 async function seedUser(id: string, amount: number): Promise<void> {
-  await built.app.inject({ method: 'POST', url: '/api/v1/accounts', headers: ADMIN, payload: { id } });
+  await seedUserOn(built, id, amount);
+}
+
+async function seedUserOn(app: BuiltApp, id: string, amount: number): Promise<void> {
+  await app.app.inject({ method: 'POST', url: '/api/v1/accounts', headers: ADMIN, payload: { id } });
   if (amount > 0) {
-    await built.app.inject({ method: 'POST', url: '/api/v1/wallet/mint', headers: ADMIN, payload: { accountId: id, amount, memo: 'test' } });
+    await app.app.inject({ method: 'POST', url: '/api/v1/wallet/mint', headers: ADMIN, payload: { accountId: id, amount, memo: 'test' } });
   }
 }
 
@@ -154,7 +159,7 @@ describe('phase 5 — AI endpoints over the wire', () => {
     const res = await built.app.inject({
       method: 'POST',
       url: '/api/v1/ai/chat',
-      headers: JSON_HDR,
+      headers: ADMIN, // trusted caller (the identity gate is covered in phase 5b)
       payload: { userId: '111', text: 'این باندل چنده؟', language: 'fa' },
     });
     expect(res.statusCode).toBe(200);
@@ -204,7 +209,7 @@ describe('phase 5 — AI endpoints over the wire', () => {
     const res = await built.app.inject({
       method: 'POST',
       url: '/api/v1/ai/chat',
-      headers: JSON_HDR,
+      headers: ADMIN, // trusted caller
       payload: { userId: 'user:tg:111', text: 'پولم را پس بگیر', language: 'fa', directAgent: 'support' },
     });
     expect(res.statusCode).toBe(200);
@@ -242,9 +247,9 @@ describe('phase 5 — AI endpoints over the wire', () => {
         if (sys.includes('intent classifier')) return '{"agent": "receptionist"}';
         return '{"reply": "hello"}';
       };
-      const first = await app.app.inject({ method: 'POST', url: '/api/v1/ai/chat', headers: JSON_HDR, payload: { userId: 'user:tg:7', text: 'hi', language: 'en' } });
+      const first = await app.app.inject({ method: 'POST', url: '/api/v1/ai/chat', headers: ADMIN, payload: { userId: 'user:tg:7', text: 'hi', language: 'en' } });
       expect(first.statusCode).toBe(200); // routing 100 + chat 100 = 200 ≥ cap → but cap gate ran BEFORE, this call succeeded
-      const second = await app.app.inject({ method: 'POST', url: '/api/v1/ai/chat', headers: JSON_HDR, payload: { userId: 'user:tg:7', text: 'hi again', language: 'en' } });
+      const second = await app.app.inject({ method: 'POST', url: '/api/v1/ai/chat', headers: ADMIN, payload: { userId: 'user:tg:7', text: 'hi again', language: 'en' } });
       expect(second.statusCode).toBe(429);
       expect(second.json().error.code).toBe('AI_BUDGET_EXCEEDED');
       const rows = await app.prisma.aiUsage.findMany({ where: { userId: 'user:tg:7' } });
@@ -262,7 +267,7 @@ describe('phase 5 — AI endpoints over the wire', () => {
       if (sys.includes('intent classifier')) return '{"agent": "receptionist"}';
       return '{"reply": "answered by secondary"}';
     };
-    const res = await built.app.inject({ method: 'POST', url: '/api/v1/ai/chat', headers: JSON_HDR, payload: { userId: 'user:tg:9', text: 'hello', language: 'en' } });
+    const res = await built.app.inject({ method: 'POST', url: '/api/v1/ai/chat', headers: ADMIN, payload: { userId: 'user:tg:9', text: 'hello', language: 'en' } });
     expect(res.statusCode).toBe(200);
     const json = res.json() as { provider: string; reply: string };
     expect(json.provider).toBe('secondary');
@@ -335,7 +340,7 @@ describe('phase 5 — AI endpoints over the wire', () => {
       if (sys.includes('intent classifier')) return '{"agent": "receptionist"}';
       return '{"reply": "sure, your key is sk-abcdef123456789012345678 — keep it safe"}';
     };
-    const res = await built.app.inject({ method: 'POST', url: '/api/v1/ai/chat', headers: JSON_HDR, payload: { userId: 'user:tg:11', text: 'my key?', language: 'en' } });
+    const res = await built.app.inject({ method: 'POST', url: '/api/v1/ai/chat', headers: ADMIN, payload: { userId: 'user:tg:11', text: 'my key?', language: 'en' } });
     expect(res.statusCode).toBe(200);
     const json = res.json() as { reply: string; redactions: number };
     expect(json.reply).toContain('[REDACTED]');
@@ -364,5 +369,112 @@ describe('phase 5 — AI endpoints over the wire', () => {
     const entries = await built.prisma.kbEntry.findMany();
     expect(entries.length).toBe(1);
     expect(entries[0]?.title).toBe('Refund policy');
+  });
+});
+
+describe('phase 5b — AI identity gate (fail-closed, audit-verified)', () => {
+  const BOT_TOKEN = '123456789:test-bot-token-abcdefgh0123456789';
+  let app2: BuiltApp;
+
+  beforeAll(async () => {
+    app2 = await buildApp({
+      adminKey: ADMIN_KEY,
+      botToken: BOT_TOKEN,
+      devAuth: false,
+      port: 8787,
+      rateLimitPerMin: 100_000,
+      aiProviders: [
+        { name: 'primary', config: { baseUrl: 'https://primary.example/v1', apiKey: PRIMARY_KEY, model: 'fake-model' } },
+      ],
+      aiDailyTokenCap: 100_000,
+    });
+  });
+
+  afterAll(async () => {
+    await app2.app.close();
+    await app2.prisma.$disconnect();
+  });
+
+  it('refuses a public caller without initData (AI_IDENTITY_REQUIRED — a public caller may not pick the actor)', async () => {
+    const res = await app2.app.inject({
+      method: 'POST',
+      url: '/api/v1/ai/chat',
+      headers: JSON_HDR,
+      payload: { userId: 'user:tg:777', text: 'hi', language: 'en' },
+    });
+    expect(res.statusCode).toBe(401);
+    expect((res.json() as { error: { code: string } }).error.code).toBe('AI_IDENTITY_REQUIRED');
+  });
+
+  it('refuses a TAMPERED initData (HMAC mismatch)', async () => {
+    const forged = makeTestInitData(BOT_TOKEN, { id: 777 }).replace(/hash=[0-9a-f]/, 'hash=0');
+    const res = await app2.app.inject({
+      method: 'POST',
+      url: '/api/v1/ai/chat',
+      headers: JSON_HDR,
+      payload: { userId: 'user:tg:999', initData: forged, text: 'hi', language: 'en' },
+    });
+    expect(res.statusCode).toBe(401);
+    expect((res.json() as { error: { code: string } }).error.code).toBe('AI_IDENTITY_REQUIRED');
+  });
+
+  it('with VALID initData the acting account is DERIVED server-side — a spoofed body userId is ignored', async () => {
+    await seedUserOn(app2, 'user:tg:777', 1_000); // only the VERIFIED account exists
+    let round = 0;
+    scripts.primary.current = () => {
+      round += 1;
+      return round === 1 ? '{"tool": "wallet_get", "args": {}}' : '{"reply": "done"}';
+    };
+    const initData = makeTestInitData(BOT_TOKEN, { id: 777 });
+    const res = await app2.app.inject({
+      method: 'POST',
+      url: '/api/v1/ai/chat',
+      headers: JSON_HDR,
+      payload: { userId: 'user:tg:999', initData, directAgent: 'orchestrator', text: 'balance?', language: 'en' },
+    });
+    expect(res.statusCode).toBe(200);
+    const json = res.json() as { toolTraces: { ok: boolean; summary: string }[] };
+    // wallet_get executed for the VERIFIED user:tg:777 — not the spoofed 999.
+    expect(json.toolTraces[0]?.ok).toBe(true);
+    expect(json.toolTraces[0]?.summary).toBe('Balance: 1000 Đ.');
+    const audit = await app2.prisma.auditLog.findFirst({ where: { action: 'ai.ok' } });
+    expect(audit?.actor).toBe('user:tg:777');
+  });
+
+  it('a TRUSTED caller (admin key) may still act on a chosen account', async () => {
+    await seedUserOn(app2, 'user:tg:555', 500);
+    scripts.primary.current = () => '{"reply": "ok"}';
+    const res = await app2.app.inject({
+      method: 'POST',
+      url: '/api/v1/ai/chat',
+      headers: ADMIN,
+      payload: { userId: 'user:tg:555', directAgent: 'orchestrator', text: 'hi', language: 'en' },
+    });
+    expect(res.statusCode).toBe(200);
+    const audit = await app2.prisma.auditLog.findFirst({ where: { action: 'ai.ok' } });
+    expect(audit?.actor).toBe('user:tg:555');
+  });
+
+  it('the LAST-round tool call is refused — money cannot move without an auditable answer', async () => {
+    await seedUserOn(app2, 'user:tg:777', 100);
+    await seedUserOn(app2, 'user:tg:888', 0);
+    scripts.primary.current = () => '{"tool": "wallet_transfer", "args": {"amountDin": 10, "toAccountId": "user:tg:888"}}';
+    const res = await app2.app.inject({
+      method: 'POST',
+      url: '/api/v1/ai/chat',
+      headers: JSON_HDR,
+      payload: { userId: 'user:tg:777', initData: makeTestInitData(BOT_TOKEN, { id: 777 }), directAgent: 'orchestrator', text: 'transfer', language: 'en' },
+    });
+    expect(res.statusCode).toBe(502);
+    expect((res.json() as { error: { code: string } }).error.code).toBe('AI_SKILL_REFUSED_FINAL_ROUND');
+    // Rounds 0 and 1 transferred (2 × 10 Đ); the FINAL round was refused —
+    // the ledger proves the third skill call never executed.
+    const postings = await app2.prisma.posting.findMany({ where: { accountId: 'user:tg:777' } });
+    const balance = postings.reduce((sum, p) => sum + p.amount, 0);
+    expect(balance).toBe(80);
+    const refused = await app2.prisma.auditLog.findFirst({ where: { action: 'ai.refused' } });
+    expect(refused).not.toBeNull();
+    const meta = JSON.parse(refused?.meta ?? '{}') as { code: string; skill: string | null };
+    expect(meta.code).toBe('AI_SKILL_REFUSED_FINAL_ROUND');
   });
 });

@@ -56,8 +56,14 @@ export const aiUsageSchema = z.object({
 });
 
 export const aiChatRequestSchema = z.object({
-  /** Caller identity — numeric Telegram id (normalized to user:tg:<id>) or a full account id. */
+  /** Caller identity — numeric Telegram id (normalized to user:tg:<id>) or a full account id.
+   *  Honored ONLY for trusted callers (a valid X-KIA-Key). Public callers may NOT
+   *  choose whose wallet the agent acts on — the server derives the identity from
+   *  initData (Telegram MiniApp HMAC) and ignores this field for them. */
   userId: idSchema,
+  /** Telegram MiniApp initData — REQUIRED for callers without the admin key;
+   *  HMAC-verified server-side against TELEGRAM_BOT_TOKEN (fail-closed). */
+  initData: z.string().min(1).max(8192).optional(),
   role: z.enum(['user', 'staff']).default('user'),
   text: z.string().min(1).max(4000),
   /** BCP-47-ish language tag mirrored verbatim into the agent prompt. */

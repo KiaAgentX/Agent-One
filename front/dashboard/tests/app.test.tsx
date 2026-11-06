@@ -38,6 +38,7 @@ function stubClient(overrides: Partial<V3Client> = {}): V3Client {
       ),
     health: () =>
       Promise.resolve(ok({ status: 'ok' as const, service: 'dropagentx-v3-server' as const, version: '0.4.0', llmConfigured: true, llmModel: 'glm-4' })),
+    createBackup: () => Promise.resolve(ok({ file: '/tmp/v3-backup.db', sizeBytes: 1024, kept: 1, createdAt: new Date().toISOString() })),
     createAccount: () => Promise.resolve(ok({ id: 'x', kind: 'user', label: null, balance: 0, createdAt: '2026-01-01T00:00:00Z' })),
     listAccounts: () =>
       Promise.resolve(

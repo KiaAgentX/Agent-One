@@ -70,6 +70,7 @@ export type GatewayFailureCode =
   | 'AI_BUDGET_EXCEEDED'
   | 'AI_MALFORMED_OUTPUT'
   | 'AI_PROVIDERS_FAILED'
+  | 'AI_SKILL_REFUSED_FINAL_ROUND'
   | 'AI_INTERNAL';
 
 interface EnvelopeReply {
@@ -326,6 +327,30 @@ export class AiGateway {
       }
 
       // 4) skill call — the fail-closed gate runs inside runSkill.
+      //      Final-round guard: a tool envelope on the LAST round can never be
+      //      fed back to the model — executing it would move money and then
+      //      die on the exhausted-loop path with no audited answer. Refuse
+      //      loudly instead (audited, typed failure), never execute blind.
+      if (isLastRound) {
+        this.audit({
+          ...baseAudit,
+          agent,
+          provider: result.provider,
+          model: result.value.model,
+          skill: envelope.skill,
+          outcome: 'refused',
+          promptTokens: usage.promptTokens,
+          completionTokens: usage.completionTokens,
+          totalTokens: usage.totalTokens,
+          redactions: 0,
+          code: 'AI_SKILL_REFUSED_FINAL_ROUND',
+        });
+        return {
+          ok: false,
+          code: 'AI_SKILL_REFUSED_FINAL_ROUND',
+          message: 'The model requested a skill after its final round — refusing to execute an action that could not produce an audited answer.',
+        };
+      }
       const outcome = await runSkill(this.deps.executor, envelope.skill, agent, envelope.args, ctx);
       if (outcome.ok) {
         const isPending = 'pending' in outcome && outcome.pending !== undefined;
@@ -355,6 +380,12 @@ export class AiGateway {
   }
 
   private audit(event: Omit<AiAuditEvent, 'at'> & { readonly at: string }): void {
-    void this.deps.audit.record(event);
+    // Fire-and-forget, but NEVER an unhandled rejection: one transient audit-
+    // sink error used to kill the whole process (Node exits on unhandled
+    // rejections) — a logging failure became a full outage. Log loudly instead.
+    // (Promise.resolve also normalizes sinks that return plain void.)
+    Promise.resolve(this.deps.audit.record(event)).catch((err: unknown) => {
+      console.error(`[ai-gateway] audit sink failed (${event.outcome}/${event.code ?? 'ok'}): ${err instanceof Error ? err.message : String(err)}`);
+    });
   }
 }

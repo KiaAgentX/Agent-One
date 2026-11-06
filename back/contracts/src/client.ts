@@ -59,7 +59,7 @@ import {
   type HitlView,
   hitlViewSchema,
 } from './hitl.js';
-import { type HealthResponse, healthResponseSchema } from './system.js';
+import { type BackupCreated, backupCreatedSchema, type HealthResponse, healthResponseSchema } from './system.js';
 import {
   burnRequestSchema,
   type BurnRequest,
@@ -95,6 +95,7 @@ export interface V3ClientOptions {
 export interface V3Client {
   economy(): Promise<ApiClientResult<EconomySummary>>;
   health(): Promise<ApiClientResult<HealthResponse>>;
+  createBackup(): Promise<ApiClientResult<BackupCreated>>;
   createAccount(request: CreateAccountRequest): Promise<ApiClientResult<AccountView>>;
   listAccounts(): Promise<ApiClientResult<{ items: AccountView[] }>>;
   balance(accountId: string): Promise<ApiClientResult<BalanceResponse>>;
@@ -187,7 +188,15 @@ export function createV3Client(options: V3ClientOptions): V3Client {
       return { ok: false, error: { code: 'NETWORK', message: `Could not reach the v3 API — ${reason}` } };
     }
 
-    const text = await res.text();
+    // The body read is part of the transport — a dropped/truncated body must
+    // come back as a Result too ("no exceptions across the boundary").
+    let text: string;
+    try {
+      text = await res.text();
+    } catch (err) {
+      const reason = err instanceof Error ? err.message.slice(0, 200) : 'unknown body failure';
+      return { ok: false, error: { code: 'NETWORK', message: `Response body could not be read — ${reason}`, status: res.status } };
+    }
     if (!res.ok) {
       let parsedError: unknown;
       try {
@@ -234,6 +243,7 @@ export function createV3Client(options: V3ClientOptions): V3Client {
   return {
     economy: () => call('GET', '/economy', { schema: economySummarySchema }),
     health: () => call('GET', '/health', { schema: healthResponseSchema }),
+    createBackup: () => call('POST', '/system/backup', { schema: backupCreatedSchema }),
     createAccount: (request) =>
       call('POST', '/accounts', { body: request, input: createAccountRequestSchema, schema: accountViewSchema }),
     listAccounts: () => call('GET', '/accounts', { schema: accountListResponseSchema }),

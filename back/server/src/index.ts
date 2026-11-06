@@ -15,7 +15,7 @@ import { buildAiGateway, type AssembledAi } from './ai.js';
 
 export const OPENAPI_INFO: C.OpenApiInfo = {
   title: 'DropAgentX v3 — Unified Core API',
-  version: '0.3.0',
+  version: '1.0.0',
   description:
     'Admin service API over the pure domain core: integer money, immutable double-entry ledger, escrow state machine, 10-article monetary charter. Errors follow { error: { code, message } } — codes are additive.',
 };
@@ -30,7 +30,13 @@ export interface BuiltApp {
 }
 
 export async function buildApp(config: Config, prisma?: PrismaClient): Promise<BuiltApp> {
-  const app = Fastify({ logger: false });
+  const app = Fastify({
+    logger: false,
+    // Behind Railway's proxy the TCP peer is the proxy itself — without this,
+    // req.ip is the SAME for every client and the rate limiter collapses into
+    // one global bucket (one busy user 429s the whole product, bot included).
+    trustProxy: true,
+  });
   const prismaClient = prisma ?? new PrismaClient();
   const store = new V3Store(prismaClient);
   await store.ensureSystemAccounts();

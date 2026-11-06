@@ -100,7 +100,11 @@ export function buildBot(config: BotConfig): RunningBot {
     }
   })().catch((err) => {
     console.error('[bot] startup failed:', err instanceof Error ? err.message : err);
-    process.exitCode = 1;
+    // Fail-fast: setting process.exitCode alone does NOT stop a serving
+    // process — the container stayed green with a dead bot forever (and the
+    // old /health was static, so Railway never restarted it). Exit loudly;
+    // the restart loop is the honest state for a money bot.
+    setTimeout(() => process.exit(1), 250);
   });
 
   return state;

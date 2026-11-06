@@ -38,7 +38,13 @@ export function resetRateLimiter(): void {
 export function rateLimit(config: Config): (req: FastifyRequest, reply: FastifyReply) => Promise<void> {
   return async (req, reply) => {
     const now = Date.now();
-    const key = req.ip ?? 'unknown';
+    // Trusted callers (bot, dashboard — they carry the admin key) share their
+    // own bucket; everyone else is keyed by the REAL client ip (trustProxy is
+    // on — see index.ts — so req.ip honors X-Forwarded-For).
+    const adminHeader = req.headers['x-kia-key'];
+    const adminValue = Array.isArray(adminHeader) ? adminHeader[0] : adminHeader;
+    const isAdmin = config.adminKey !== undefined && verifyKiaKey(adminValue, config.adminKey);
+    const key = isAdmin ? 'admin' : (req.ip ?? 'unknown');
     const windowMs = 60_000;
     const hits = (windows.get(key) ?? []).filter((t) => now - t < windowMs);
     if (hits.length >= config.rateLimitPerMin) {

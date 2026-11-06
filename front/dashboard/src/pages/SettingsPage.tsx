@@ -5,10 +5,11 @@
 
 import { useState } from 'react';
 import { useSession } from '../lib/session.js';
+import { createDashboardClient } from '../lib/api.js';
 import { Banner, Button, Card, Field } from '../components/ui.js';
 
 export function SettingsPage(): React.JSX.Element {
-  const { t, lang, setLang, adminKey, setAdminKey, client } = useSession();
+  const { t, lang, setLang, adminKey, setAdminKey, baseUrl } = useSession();
   const [keyInput, setKeyInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<'ok' | 'bad' | null>(null);
@@ -20,7 +21,11 @@ export function SettingsPage(): React.JSX.Element {
       return;
     }
     setBusy(true);
-    const probe = await client.listAccounts();
+    // Probe with the key the user TYPED. Probing with the session client
+    // validated the WRONG credential: logged-out, the correct key was always
+    // rejected (401 without key); logged-in, any garbage passed (old key did
+    // the work) and could replace a working session with a dead one.
+    const probe = await createDashboardClient({ baseUrl, adminKey: trimmed }).listAccounts();
     setBusy(false);
     if (probe.ok) {
       setAdminKey(trimmed);

@@ -80,13 +80,27 @@ export class PrismaUsageMeter implements UsageMeter {
     return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate())).toISOString().slice(0, 10);
   }
 
-  /** Precompute today's spend so the synchronous gate is exact. */
+  /** Precompute today's spend so the synchronous gate is exact.
+   *
+   *  Monotonic merge — NEVER a blind reset. The DB lags this process (rows are
+   *  flushed only after the ask completes), so a concurrent request's DB read
+   *  used to overwrite the cache with a stale sum: N in-flight requests each
+   *  saw a fresh budget and the daily cap multiplied by concurrency. max()
+   *  across cache (authoritative in-flight), DB (other instances/past runs)
+   *  and pending queue keeps the gate honest. */
   async ensureAllowance(userId: string): Promise<void> {
+    const today = this.dayKey();
     const agg = await this.prisma.aiUsage.aggregate({
       _sum: { totalTokens: true },
-      where: { userId, at: { gte: new Date(`${this.dayKey()}T00:00:00.000Z`) } },
+      where: { userId, at: { gte: new Date(`${today}T00:00:00.000Z`) } },
     });
-    this.cache.set(userId, { day: this.dayKey(), used: agg._sum.totalTokens ?? 0 });
+    const dbUsed = agg._sum.totalTokens ?? 0;
+    const cached = this.cache.get(userId);
+    const cachedUsed = cached !== undefined && cached.day === today ? cached.used : 0;
+    const pendingUsed = this.pending
+      .filter((r) => r.userId === userId)
+      .reduce((sum, r) => sum + Math.max(0, r.totalTokens), 0);
+    this.cache.set(userId, { day: today, used: Math.max(cachedUsed, dbUsed, pendingUsed) });
   }
 
   checkAllowance(userId: string): { ok: true } | { ok: false; code: 'AI_BUDGET_EXCEEDED'; message: string; usedToday: number; cap: number } {

@@ -15,3 +15,29 @@ export const healthResponseSchema = z.object({
 });
 
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
+
+export const backupCreatedSchema = z.object({
+  /** Absolute path of the snapshot inside the volume (db/backups/…). */
+  file: z.string(),
+  sizeBytes: z.number().int().min(0),
+  /** Snapshots retained on disk after pruning. */
+  kept: z.number().int().min(0),
+  createdAt: z.string(),
+});
+
+export type BackupCreated = z.infer<typeof backupCreatedSchema>;
+
+// ── route definitions (one per endpoint — ADR-005) ──────────────────────────
+
+export const SYSTEM_ROUTES = [
+  {
+    method: 'POST' as const,
+    path: '/system/backup',
+    operationId: 'createBackup',
+    summary: 'Consistent SQLite snapshot (VACUUM INTO) into db/backups — prunes to the newest KEEP_BACKUPS files. Admin-gated.',
+    tag: 'system',
+    security: 'admin' as const,
+    response: backupCreatedSchema,
+    status: 200,
+  },
+];

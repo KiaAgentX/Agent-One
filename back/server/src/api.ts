@@ -12,9 +12,10 @@ import { z } from 'zod';
 import type { V3Store, ApplyResult } from './persistence.js';
 import type { Config } from './config.js';
 import { DomainFailure, HttpFailure } from './errors.js';
-import { verifyKiaKey } from './auth.js';
+import { verifyKiaKey, verifyTelegramInitData } from './auth.js';
+import { createBackup } from './backup.js';
 import { AGENTS, AGENT_ORDER, SKILLS } from '@dropagentx/ai-gateway';
-import type { AssembledAi } from './ai.js';
+import { normalizeAccountId, type AssembledAi } from './ai.js';
 
 export interface RouteContext {
   readonly store: V3Store;
@@ -103,13 +104,23 @@ export const API_ROUTES: ApiRoute[] = [
     tag: 'system',
     security: 'public',
     response: C.healthResponseSchema,
-    handler: async ({ config }) => ({
-      status: 'ok',
-      service: 'dropagentx-v3-server',
-      version: '0.3.0',
-      llmConfigured: config.llm !== undefined,
-      llmModel: config.llm?.model ?? null,
-    }),
+    handler: async ({ store, config }) => {
+      // DEEP liveness: a server that cannot talk to its ledger is NOT healthy.
+      // A static ok-JSON passed Railway's healthcheck while the DB was broken —
+      // Railway must restart a zombie, not keep it green.
+      try {
+        await store.prisma.$queryRaw`SELECT 1`;
+      } catch {
+        throw new HttpFailure(503, 'DB_DOWN', 'The server cannot reach its database.');
+      }
+      return {
+        status: 'ok',
+        service: 'dropagentx-v3-server',
+        version: '1.0.0',
+        llmConfigured: config.llm !== undefined,
+        llmModel: config.llm?.model ?? null,
+      };
+    },
   },
   {
     method: 'get',
@@ -673,6 +684,18 @@ export const API_ROUTES: ApiRoute[] = [
     handler: async ({ store }) => ({ expired: await store.expireOverdueHitl(new Date()) }),
   },
 
+  // ── System: consistent DB snapshots (the database IS the money) ──────────
+  {
+    method: 'post',
+    path: '/system/backup',
+    operationId: 'createBackup',
+    summary: 'Consistent SQLite snapshot (VACUUM INTO) into db/backups — prunes to the newest KEEP_BACKUPS files. Admin-gated.',
+    tag: 'system',
+    security: 'admin',
+    response: C.backupCreatedSchema,
+    handler: async ({ store }) => await createBackup(store.prisma, { databaseUrl: process.env.DATABASE_URL }),
+  },
+
   // ── Phase 5: AI cycle (Zenovix gateway) ──────────────────────────────────
   {
     method: 'post',
@@ -690,9 +713,28 @@ export const API_ROUTES: ApiRoute[] = [
       if (body.role === 'staff' && !verifyKiaKey(headerValue(input.headers, 'x-kia-key'), ctx.config.adminKey)) {
         throw new HttpFailure(401, 'UNAUTHORIZED', 'Staff role requires a valid X-KIA-Key.');
       }
-      await ai.meter.ensureAllowance(body.userId);
+      // Fail-closed identity gate: a PUBLIC caller may not choose whose wallet
+      // the agent acts on. Trusted callers (valid admin key — the bot, the
+      // dashboard) may pass userId; everyone else must prove a Telegram
+      // identity via MiniApp initData (HMAC against the bot token) and the
+      // server DERIVES the acting account from it, ignoring the body field.
+      const trusted = verifyKiaKey(headerValue(input.headers, 'x-kia-key'), ctx.config.adminKey);
+      let userId = body.userId;
+      if (!trusted) {
+        if (ctx.config.botToken === undefined) {
+          throw new HttpFailure(503, 'AI_IDENTITY_DISABLED', 'This server cannot verify public AI callers (TELEGRAM_BOT_TOKEN unset) — send a valid X-KIA-Key.');
+        }
+        const identity = body.initData !== undefined ? verifyTelegramInitData(body.initData, ctx.config.botToken) : null;
+        if (identity === null) {
+          throw new HttpFailure(401, 'AI_IDENTITY_REQUIRED', 'Public AI callers must send valid Telegram initData — the acting account is derived from it, never from the body.');
+        }
+        // Same convention as the bot: a numeric Telegram id normalizes to
+        // user:tg:<id> — meter keys and audit actors stay uniform.
+        userId = normalizeAccountId(identity.userId);
+      }
+      await ai.meter.ensureAllowance(userId);
       const result = await ai.gateway.ask({
-        userId: body.userId,
+        userId,
         role: body.role,
         text: body.text,
         language: body.language,

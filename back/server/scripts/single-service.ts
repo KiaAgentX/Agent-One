@@ -23,6 +23,19 @@ const config = loadConfig();
 // changes loudly (fail-closed). Only meaningful for file: (SQLite) databases.
 const databaseUrl = process.env.DATABASE_URL;
 if (databaseUrl !== undefined && databaseUrl.startsWith('file:')) {
+  // Boot-time snapshot BEFORE anything touches the file — even a failing
+  // schema push can no longer destroy the previous state unnoticed. A fresh
+  // volume (no db file yet) simply skips with a warning.
+  try {
+    const { PrismaClient } = await import('@prisma/client');
+    const { createBackup } = await import('../src/backup.js');
+    const snapshotter = new PrismaClient();
+    const snap = await createBackup(snapshotter, { databaseUrl, keep: 7 });
+    await snapshotter.$disconnect();
+    console.log(`[single] boot backup → ${snap.file} (${Math.round(snap.sizeBytes / 1024)} KB, keeping ${snap.kept})`);
+  } catch (err) {
+    console.warn(`[single] boot backup skipped — ${err instanceof Error ? err.message : err}`);
+  }
   console.log('[single] ensuring database schema (prisma db push)…');
   execSync('pnpm exec prisma db push --skip-generate', {
     cwd: fileURLToPath(new URL('..', import.meta.url)),
